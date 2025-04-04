@@ -1,31 +1,41 @@
-from quickbooks.objects.report import Report
-
 from ..models import QBOContext
 
 
-async def get_profit_loss(ctx: QBOContext, start_date: str, end_date: str) -> str:
+async def get_profit_loss(ctx: QBOContext, start_date: str, end_date: str) -> dict:
     """Generate Profit and Loss report for the specified date range."""
-    report = Report.profit_and_loss(
-        qbo=ctx.client,
-        start_date=start_date,
-        end_date=end_date,
-    )
-    return report.get_report()
+    # Assuming ctx.client has a method to call report endpoints
+    # The actual method name might differ (e.g., make_request, call_api)
+    # The return type is likely a dict representing the JSON response
+    params = {"start_date": start_date, "end_date": end_date}
+    # Use getattr to safely attempt calling the method, replace 'get_report' if needed
+    report_func = getattr(ctx.client, "get_report", None)
+    if report_func:
+        return await report_func("ProfitAndLoss", params=params)
+    else:
+        # Fallback or error handling if the method doesn't exist
+        raise NotImplementedError("Client does not have a 'get_report' method.")
 
 
-async def get_balance_sheet(ctx: QBOContext, as_of_date: str) -> str:
+async def get_balance_sheet(ctx: QBOContext, report_date: str) -> dict:
     """Generate Balance Sheet report as of specified date."""
-    report = Report.balance_sheet(
-        qbo=ctx.client,
-        as_of=as_of_date,
-    )
-    return report.get_report()
+    # Assuming ctx.client has a method to call report endpoints
+    # QBO API parameter is typically 'report_date' or similar for Balance Sheet
+    params = {"report_date": report_date}
+    report_func = getattr(ctx.client, "get_report", None)
+    if report_func:
+        return await report_func("BalanceSheet", params=params)
+    else:
+        raise NotImplementedError("Client does not have a 'get_report' method.")
 
 
-async def get_aged_receivables(ctx: QBOContext) -> str:
+async def get_aged_receivables(ctx: QBOContext) -> dict:
     """Generate Aged Receivables report."""
-    report = Report.aged_receivables(qbo=ctx.client)
-    return report.get_report()
+    # Assuming ctx.client has a method to call report endpoints
+    report_func = getattr(ctx.client, "get_report", None)
+    if report_func:
+        return await report_func("AgedReceivables", params={})
+    else:
+        raise NotImplementedError("Client does not have a 'get_report' method.")
 
 
 async def search_transactions(ctx: QBOContext, query: str) -> list:

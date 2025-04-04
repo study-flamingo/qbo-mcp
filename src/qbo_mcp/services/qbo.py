@@ -1,7 +1,6 @@
-from contextlib import asynccontextmanager
-from collections.abc import AsyncIterator
 import json
-import os
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from intuitlib.client import AuthClient
@@ -45,12 +44,7 @@ async def qbo_connection(config: QBOConfig) -> AsyncIterator[QBOContext]:
         client_id=config.client_id,
         client_secret=config.client_secret,
         environment=config.environment,
-        redirect_uri=config.redirect_uri,
-        scope=[
-            Scopes.ACCOUNTING,
-            Scopes.OPENID,
-            Scopes.EMAIL,
-        ],
+        redirect_uri=config.redirect_uri
     )
 
     # Try to load refresh token from secure storage

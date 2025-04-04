@@ -2,7 +2,6 @@ import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
-from typing import Any
 
 from mcp.server.fastmcp import Context, FastMCP
 from quickbooks.exceptions import QuickbooksException
@@ -48,7 +47,7 @@ def format_qbo_error(e: Exception) -> str:
 
 
 # Resources
-@mcp.resource("accounts://list")
+@mcp.tool()
 def get_accounts(ctx: Context) -> str:
     """Get list of all accounts"""
     try:
@@ -62,7 +61,7 @@ def get_accounts(ctx: Context) -> str:
         return format_qbo_error(e)
 
 
-@mcp.resource("customers://list")
+@mcp.tool()
 def get_customers(ctx: Context) -> str:
     """Get list of all customers"""
     try:
@@ -74,7 +73,7 @@ def get_customers(ctx: Context) -> str:
         return format_qbo_error(e)
 
 
-@mcp.resource("invoices://recent")
+@mcp.tool()
 def get_recent_invoices(ctx: Context) -> str:
     """Get list of recent invoices"""
     try:
@@ -192,3 +191,4 @@ def accounts_receivable_analysis() -> str:
 4. Recommend specific strategies for improving collections
 
 Would you like me to proceed with this analysis?"""
+

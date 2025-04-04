@@ -12,7 +12,6 @@ import sys
 # import sys
 # from pathlib import Path
 # sys.path.insert(0, str(Path(__file__).parent))
-
 # Import the server from the package
 from src.qbo_mcp.server import mcp
 
@@ -22,7 +21,7 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
     )
-    
+
     # Run the server
     try:
         mcp.run()

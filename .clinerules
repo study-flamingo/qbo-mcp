@@ -1,0 +1,4 @@
+When testing this MCP Server in development, initialize a user-visible chrome debug window with:
+```"C:\Program Files\Google\Chrome\Application\chrome.exe" --remote-debugging-port=9222 --user-data-dir="C:\Users\joelc\temp\vscode-chrome-debug" --no-first-run```
+
+Then, open a browser window to http://localhost:5173.

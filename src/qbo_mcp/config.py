@@ -1,0 +1,27 @@
+from dataclasses import dataclass
+from typing import Literal
+import os
+
+
+@dataclass
+class QBOConfig:
+    """QuickBooks Online configuration settings."""
+
+    client_id: str
+    client_secret: str
+    environment: Literal["sandbox", "production"]
+    redirect_uri: str
+    company_id: str | None = None
+    refresh_token: str | None = None
+
+
+def load_config() -> QBOConfig:
+    """Load QBO configuration from environment variables."""
+    return QBOConfig(
+        client_id=os.getenv("QBO_CLIENT_ID", ""),
+        client_secret=os.getenv("QBO_CLIENT_SECRET", ""),
+        environment=os.getenv("QBO_ENVIRONMENT", "sandbox"),
+        redirect_uri=os.getenv("QBO_REDIRECT_URI", "http://localhost:8000/callback"),
+        company_id=os.getenv("QBO_COMPANY_ID"),
+        refresh_token=os.getenv("QBO_REFRESH_TOKEN"),
+    )

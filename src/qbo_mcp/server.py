@@ -191,4 +191,3 @@ def accounts_receivable_analysis() -> str:
 4. Recommend specific strategies for improving collections
 
 Would you like me to proceed with this analysis?"""
-

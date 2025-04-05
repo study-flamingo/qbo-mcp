@@ -14,8 +14,7 @@ class QBOConfig:
     client_secret: str
     environment: Literal["sandbox", "production"]
     redirect_uri: str
-    company_id: str | None = None
-    refresh_token: str | None = None
+    company_id: str | None = None # Keep for now, might be removable if QuickBooks client gets it automatically
 
 
 def load_config() -> QBOConfig:
@@ -30,5 +29,5 @@ def load_config() -> QBOConfig:
         environment=os.getenv("QBO_ENVIRONMENT", "sandbox"),
         redirect_uri=os.getenv("QBO_REDIRECT_URI", "http://localhost:8000/callback"),
         company_id=os.getenv("QBO_COMPANY_ID"),
-        refresh_token=os.getenv("QBO_REFRESH_TOKEN"),
+        # refresh_token is no longer loaded here, managed by qbo.py's token.json
     )

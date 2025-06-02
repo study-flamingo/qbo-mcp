@@ -15,8 +15,10 @@ from .api import prompts # Import prompts module
 from .api import tools # Import tools package (__init__.py imports specific tool modules)
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+)
 
 
 @asynccontextmanager
@@ -32,15 +34,13 @@ async def server_lifespan(server: FastMCP) -> AsyncIterator[QBOContext]:
         raise
 
 
-# Create MCP server
 mcp = FastMCP(
-    "QuickBooks Online",
+    "QBO MCP Server",
     lifespan=server_lifespan,
-    description=(
-        "Access QuickBooks Online financial data and reports. "
-        "You can ask me to analyze financial statements, review cash flow, "
-        "check on receivables, or search for specific transactions."
-    ),
+    instructions="""Quickbooks MCP Server\n\n
+        Access QuickBooks Online financial data and reports. You can ask
+        me to analyze financial statements, review cash flow, check on
+        receivables, or search for specific transactions.""" # TODO: add parameter descriptions
 )
 
 

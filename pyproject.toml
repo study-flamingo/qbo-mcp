@@ -8,7 +8,7 @@ dependencies = [
     "intuit-oauth>=1.2.6",
     "mcp[cli]>=1.6.0",
     "python-dotenv>=1.1.0",
-    "python-quickbooks>=0.9.11",
+    "qbosdk>=0.22.0",
 ]
 
 [project.scripts]

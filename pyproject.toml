@@ -5,10 +5,11 @@ description = "MCP server for QuickBooks Online integration"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastmcp>=2.9.0",
     "intuit-oauth>=1.2.6",
     "mcp[cli]>=1.6.0",
     "python-dotenv>=1.1.0",
-    "qbosdk>=0.22.0",
+    "python-quickbooks>=0.9.12",
 ]
 
 [project.scripts]
@@ -25,4 +26,10 @@ select = [
     "F",  # pyflakes
     "I",  # isort
     "B",  # flake8-bugbear
+]
+ignore = [
+    "W293",  # blank line contains whitespace
+    "E501",  # line too long
+    "F403",  # 'from module import *' used; unable to detect undefined
+    "F405",  # name may be undefined, or defined from star imports
 ]

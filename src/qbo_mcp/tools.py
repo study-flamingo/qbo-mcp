@@ -14,7 +14,7 @@ from .reports import (
     get_last_month_period
 )
 
-logger = logging.getLoggeer("qbo_mcp")
+logger = logging.getLogger("qbo_mcp")
 
 
 # Helper functions
@@ -23,7 +23,7 @@ def parse_date(date_str: str) -> date:
     return datetime.strptime(date_str, "%Y-%m-%d").date()
 
 
-def get_report_period(period_model: ReportPeriodModel | None) -> ReportPeriod:
+def create_report_period(period_model: ReportPeriodModel | None) -> ReportPeriod:
     """Get ReportPeriod from model or default to current month."""
     if period_model:
         return ReportPeriod(
@@ -67,10 +67,8 @@ def ensure_authenticated_response(func):
 def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, Any]:
     """
     Generate a Profit & Loss report from QuickBooks Online.
-    
-    This will automatically handle authentication if needed.
     """
-    period = get_report_period(request.period)
+    period = create_report_period(request.period)
     report = reports_generator.get_profit_and_loss(period, request.summarize_by)
     
     return {
@@ -90,8 +88,6 @@ def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, Any]:
 def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, Any]:
     """
     Generate a Balance Sheet report from QuickBooks Online.
-    
-    This will automatically handle authentication if needed.
     """
     as_of_date = parse_date(request.as_of_date) if request.as_of_date else date.today()
     report = reports_generator.get_balance_sheet(as_of_date, request.summarize_by)
@@ -110,10 +106,8 @@ def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, Any
 def generate_cash_flow_report(request: CashFlowRequest) -> dict[str, Any]:
     """
     Generate a Cash Flow statement from QuickBooks Online.
-    
-    This will automatically handle authentication if needed.
     """
-    period = get_report_period(request.period)
+    period = create_report_period(request.period)
     report = reports_generator.get_cash_flow(period)
     
     return {
@@ -133,8 +127,6 @@ def generate_cash_flow_report(request: CashFlowRequest) -> dict[str, Any]:
 def generate_ar_aging_report(request: AgingRequest) -> dict[str, Any]:
     """
     Generate an Accounts Receivable Aging report from QuickBooks Online.
-    
-    This will automatically handle authentication if needed.
     """
     as_of_date = parse_date(request.as_of_date) if request.as_of_date else date.today()
     report = reports_generator.get_accounts_receivable_aging(as_of_date)
@@ -153,8 +145,6 @@ def generate_ar_aging_report(request: AgingRequest) -> dict[str, Any]:
 def generate_ap_aging_report(request: AgingRequest) -> dict[str, Any]:
     """
     Generate an Accounts Payable Aging report from QuickBooks Online.
-    
-    This will automatically handle authentication if needed.
     """
     as_of_date = parse_date(request.as_of_date) if request.as_of_date else date.today()
     report = reports_generator.get_accounts_payable_aging(as_of_date)
@@ -173,10 +163,8 @@ def generate_ap_aging_report(request: AgingRequest) -> dict[str, Any]:
 def generate_sales_by_customer_report(request: SalesCustomerRequest) -> dict[str, Any]:
     """
     Generate a Sales by Customer report from QuickBooks Online.
-    
-    This will automatically handle authentication if needed.
     """
-    period = get_report_period(request.period)
+    period = create_report_period(request.period)
     report = reports_generator.get_sales_by_customer(period)
     
     return {
@@ -196,10 +184,8 @@ def generate_sales_by_customer_report(request: SalesCustomerRequest) -> dict[str
 def generate_expenses_by_vendor_report(request: ExpensesVendorRequest) -> dict[str, Any]:
     """
     Generate an Expenses by Vendor report from QuickBooks Online.
-    
-    This will automatically handle authentication if needed.
     """
-    period = get_report_period(request.period)
+    period = create_report_period(request.period)
     report = reports_generator.get_expenses_by_vendor(period)
     
     return {
@@ -219,8 +205,6 @@ def generate_expenses_by_vendor_report(request: ExpensesVendorRequest) -> dict[s
 def get_current_month_pl() -> dict[str, Any]:
     """
     Get current month Profit & Loss report (quick access).
-    
-    This will automatically handle authentication if needed.
     """
     request = ProfitLossRequest(period=None, summarize_by="Month")
     return generate_profit_loss_report(request)
@@ -230,8 +214,6 @@ def get_current_month_pl() -> dict[str, Any]:
 def get_current_quarter_pl() -> dict[str, Any]:
     """
     Get current quarter Profit & Loss report (quick access).
-    
-    This will automatically handle authentication if needed.
     """
     period = get_current_quarter_period()
     period_model = ReportPeriodModel(
@@ -246,8 +228,6 @@ def get_current_quarter_pl() -> dict[str, Any]:
 def get_current_year_pl() -> dict[str, Any]:
     """
     Get current year Profit & Loss report (quick access).
-    
-    This will automatically handle authentication if needed.
     """
     period = get_current_year_period()
     period_model = ReportPeriodModel(
@@ -262,8 +242,6 @@ def get_current_year_pl() -> dict[str, Any]:
 def get_last_month_pl() -> dict[str, Any]:
     """
     Get last month Profit & Loss report (quick access).
-    
-    This will automatically handle authentication if needed.
     """
     period = get_last_month_period()
     period_model = ReportPeriodModel(
@@ -278,8 +256,6 @@ def get_last_month_pl() -> dict[str, Any]:
 def get_company_financial_summary() -> dict[str, Any]:
     """
     Get a comprehensive financial summary including key reports.
-    
-    This will automatically handle authentication if needed.
     """
     try:
         # Ensure authentication

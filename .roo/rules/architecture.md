@@ -44,24 +44,22 @@ qbo-mcp/
 └── src/qbo_mcp/               # Main package
     ├── __init__.py             # Package initialization and main() function
     ├── __main__.py             # Module execution entry point
-    ├── server.py               # FastMCP server with all MCP tools
+    ├── server.py               # FastMCP server instance and tool registration
     ├── config.py               # Configuration management and validation
     ├── auth.py                 # OAuth authentication using intuit-oauth
     ├── reports.py              # QuickBooks report generation logic
     ├── models.py               # Pydantic models for tool inputs
     ├── resources.py            # (Reserved for future resource management)
-    └── tools.py                # (Reserved for future tool extensions)
+    └── tools.py                # MCP tool definitions and helper functions
 ```
 
 ## Core Components
 
-### **1. server.py** - MCP Interface Layer
+### **1. tools.py** - MCP Tool Definitions
 
-- **FastMCP server instance** with all tool definitions
-- **Input validation** using Pydantic models
-- **Automatic authentication** decorator for all tools
-- **Error handling** and response formatting
-- **Tool registration** and metadata
+- **Defines all MCP tools** with `@mcp.tool()` decorator
+- **Contains helper functions** for report generation and data processing
+- **Integrates with authentication** and report generation logic
 
 **Key Functions:**
 
@@ -70,10 +68,21 @@ qbo-mcp/
 - `generate_cash_flow_report()` - Cash flow statements
 - `generate_ar_aging_report()` - A/R aging analysis
 - `generate_ap_aging_report()` - A/P aging analysis
+- `generate_sales_by_customer_report()` - Sales by customer report
+- `generate_expenses_by_vendor_report()` - Expenses by vendor report
 - `get_current_month_pl()` - Quick access current month P&L
+- `get_current_quarter_pl()` - Quick access current quarter P&L
+- `get_current_year_pl()` - Quick access current year P&L
+- `get_last_month_pl()` - Quick access last month P&L
 - `get_company_financial_summary()` - Comprehensive overview
 
-### **2. auth.py** - Authentication Layer
+### **2. server.py** - FastMCP Server Instance
+
+- **Initializes and runs** the FastMCP server
+- **Imports and registers** tools defined in `tools.py`
+- **Configures logging** and performs startup checks
+
+### **3. auth.py** - Authentication Layer
 
 - **QBOAuthManager** class managing OAuth state
 - **Automatic browser-based** OAuth flow
@@ -89,7 +98,7 @@ qbo-mcp/
 - State persistence to disk with JSON storage
 - Browser automation for seamless UX
 
-### **3. reports.py** - Business Logic Layer
+### **4. reports.py** - Business Logic Layer
 
 - **QBOReportsGenerator** class for report creation
 - **Report processing** and data transformation
@@ -106,18 +115,19 @@ qbo-mcp/
 - Sales by Customer
 - Expenses by Vendor
 
-### **4. config.py** - Configuration Management
+### **5. config.py** - Configuration Management
 
 - **QBOConfig** class with environment variable loading
 - **Configuration validation** and error reporting
 - **Environment support** (sandbox/production)
 - **Default values** and validation rules
 
-### **5. models.py** - Data Models
+### **6. models.py** - Data Models
 
 - **Pydantic models** for tool input validation
 - **Type safety** and automatic documentation
 - **Reusable components** for common data structures
+- **Explicitly exports** models via `__all__` for clear API
 
 ## Data Flow
 
@@ -194,14 +204,14 @@ LLM Request → FastMCP Tool → Auth Check → QB API → Report Processing →
 
 1. Add method to `QBOReportsGenerator` in `reports.py`
 2. Add Pydantic model to `models.py` (if needed)
-3. Add tool function to `server.py` with `@mcp.tool()` decorator
+3. Add tool function to `tools.py` with `@mcp.tool()` decorator and import it in `server.py`
 4. Update README with new tool documentation
 
 ### **Adding New Data Sources**
 
 1. Create new service module (e.g., `transactions.py`)
 2. Add authentication integration
-3. Create corresponding tools in `server.py`
+3. Create corresponding tools in `tools.py` and import them in `server.py`
 4. Add models for new data types
 
 ### **Custom Authentication**

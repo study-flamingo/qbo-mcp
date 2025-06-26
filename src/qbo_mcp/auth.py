@@ -20,14 +20,13 @@ from .config import config
 logger = logging.getLogger("qbo_mcp")
 
 
-
 class CallbackHandler(BaseHTTPRequestHandler):
     """HTTP handler for OAuth callback."""
     
     def do_GET(self):
         """Handle GET request for OAuth callback."""
         if self.path.startswith('/callback'):
-            CallbackHandler.callback_url = f"http://localhost:8080{self.path}"
+            CallbackHandler.callback_url: str | None = f"http://localhost:8080{self.path}"
             
             self.send_response(200)
             self.send_header('Content-type', 'text/html')
@@ -113,7 +112,7 @@ class QBOAuthManager:
             # Get auth URL from intuit-oauth
             auth_url = self.auth_client.get_authorization_url([Scopes.ACCOUNTING])
             
-            print("\n🔐 Opening browser for QuickBooks authorization...")
+            logger.debug("Opening browser for QuickBooks authorization")
             webbrowser.open(auth_url)
             
             # Wait for callback

@@ -1,5 +1,6 @@
 """Configuration settings for QBO MCP server."""
 
+import logging
 import os
 from pathlib import Path
 
@@ -8,6 +9,7 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+logging.getLogger("qbo_mcp")
 
 class QBOConfig:
     """Configuration class for QuickBooks Online integration."""

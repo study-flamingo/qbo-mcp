@@ -1,14 +1,44 @@
+"""
+QuickBooks Online MCP Server - Entry Point
+
+This file serves as the entry point for the QuickBooks Online MCP server.
+It imports and runs the server implementation from the src/qbo_mcp package.
+"""
+
+import argparse
 import logging
 import sys
+
 from .server import mcp
+from .auth import authenticator
+
 
 def main():
-  try:
-      mcp.run()
-  except Exception as e:
-      logging.error(f"Configuration Error: {e}")
-      sys.exit(1)
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
 
-# This check ensures the main function runs only when the package is executed directly
+    # Setup argument parser
+    parser = argparse.ArgumentParser(description="QuickBooks Online MCP Server")
+    parser.add_argument(
+        "--auth",
+        action="store_true",
+        help="Run the interactive OAuth2 authorization flow to get initial tokens.",
+    )
+    args = parser.parse_args()
+
+    if args.auth:
+        authenticator.ensure_authenticated()
+    else:
+        # Run the MCP server
+        logging.info("Starting MCP server...")
+        try:
+            mcp.run()
+        except Exception as e:
+            logging.error(f"Failed to start server: {e}")
+            sys.exit(1)
+
 if __name__ == "__main__":
     main()

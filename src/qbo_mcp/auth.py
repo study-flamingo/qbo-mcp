@@ -17,7 +17,8 @@ from quickbooks import QuickBooks
 
 from .config import config
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("qbo_mcp")
+
 
 
 class CallbackHandler(BaseHTTPRequestHandler):
@@ -51,7 +52,7 @@ class CallbackHandler(BaseHTTPRequestHandler):
 class QBOAuthManager:
     """Minimal auth manager using intuit-oauth package."""
     
-    def __init__(self, token_file: Optional[Path] = None):
+    def __init__(self, token_file: Path | None = None):
         """Initialize auth manager."""
         self.token_file = token_file or config.token_file
         self.auth_client = AuthClient(
@@ -112,7 +113,7 @@ class QBOAuthManager:
             # Get auth URL from intuit-oauth
             auth_url = self.auth_client.get_authorization_url([Scopes.ACCOUNTING])
             
-            print(f"\n🔐 Opening browser for QuickBooks authorization...")
+            print("\n🔐 Opening browser for QuickBooks authorization...")
             webbrowser.open(auth_url)
             
             # Wait for callback
@@ -222,10 +223,12 @@ class QBOAuthManager:
         """Check if authenticated."""
         return bool(self.auth_client.access_token and self.auth_client.realm_id)
     
-    def get_company_info(self) -> Optional[Dict[str, Any]]:
+    def get_company_info(self) -> dict[str, Any] | None:
         """Get company info."""
         if not self.is_authenticated:
-            return None
+            return {
+                "error": "Not authenticated"
+            }
         
         return {
             "company_id": self.auth_client.realm_id,

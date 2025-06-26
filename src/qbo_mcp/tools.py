@@ -1,6 +1,6 @@
 import logging
 from datetime import date, datetime
-from typing import Any
+from typing import any
 
 from .auth import authenticator
 from .models import *
@@ -64,7 +64,7 @@ def ensure_authenticated_response(func):
 # Report generation tools
 @mcp.tool()
 @ensure_authenticated_response
-def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, Any]:
+def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, any]:
     """
     Generate a Profit & Loss report from QuickBooks Online.
     """
@@ -85,7 +85,7 @@ def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, Any]:
 
 @mcp.tool()
 @ensure_authenticated_response
-def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, Any]:
+def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, any]:
     """
     Generate a Balance Sheet report from QuickBooks Online.
     """
@@ -103,7 +103,7 @@ def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, Any
 
 @mcp.tool()
 @ensure_authenticated_response
-def generate_cash_flow_report(request: CashFlowRequest) -> dict[str, Any]:
+def generate_cash_flow_report(request: CashFlowRequest) -> dict[str, any]:
     """
     Generate a Cash Flow statement from QuickBooks Online.
     """
@@ -124,7 +124,7 @@ def generate_cash_flow_report(request: CashFlowRequest) -> dict[str, Any]:
 
 @mcp.tool()
 @ensure_authenticated_response
-def generate_ar_aging_report(request: AgingRequest) -> dict[str, Any]:
+def generate_ar_aging_report(request: AgingRequest) -> dict[str, any]:
     """
     Generate an Accounts Receivable Aging report from QuickBooks Online.
     """
@@ -142,7 +142,7 @@ def generate_ar_aging_report(request: AgingRequest) -> dict[str, Any]:
 
 @mcp.tool()
 @ensure_authenticated_response
-def generate_ap_aging_report(request: AgingRequest) -> dict[str, Any]:
+def generate_ap_aging_report(request: AgingRequest) -> dict[str, any]:
     """
     Generate an Accounts Payable Aging report from QuickBooks Online.
     """
@@ -160,7 +160,7 @@ def generate_ap_aging_report(request: AgingRequest) -> dict[str, Any]:
 
 @mcp.tool()
 @ensure_authenticated_response
-def generate_sales_by_customer_report(request: SalesCustomerRequest) -> dict[str, Any]:
+def generate_sales_by_customer_report(request: SalesCustomerRequest) -> dict[str, any]:
     """
     Generate a Sales by Customer report from QuickBooks Online.
     """
@@ -181,7 +181,7 @@ def generate_sales_by_customer_report(request: SalesCustomerRequest) -> dict[str
 
 @mcp.tool()
 @ensure_authenticated_response
-def generate_expenses_by_vendor_report(request: ExpensesVendorRequest) -> dict[str, Any]:
+def generate_expenses_by_vendor_report(request: ExpensesVendorRequest) -> dict[str, any]:
     """
     Generate an Expenses by Vendor report from QuickBooks Online.
     """
@@ -202,7 +202,7 @@ def generate_expenses_by_vendor_report(request: ExpensesVendorRequest) -> dict[s
 
 # Quick period report tools for common use cases
 @mcp.tool()
-def get_current_month_pl() -> dict[str, Any]:
+def get_current_month_pl() -> dict[str, any]:
     """
     Get current month Profit & Loss report (quick access).
     """
@@ -211,7 +211,7 @@ def get_current_month_pl() -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_current_quarter_pl() -> dict[str, Any]:
+def get_current_quarter_pl() -> dict[str, any]:
     """
     Get current quarter Profit & Loss report (quick access).
     """
@@ -225,7 +225,7 @@ def get_current_quarter_pl() -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_current_year_pl() -> dict[str, Any]:
+def get_current_year_pl() -> dict[str, any]:
     """
     Get current year Profit & Loss report (quick access).
     """
@@ -239,7 +239,7 @@ def get_current_year_pl() -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_last_month_pl() -> dict[str, Any]:
+def get_last_month_pl() -> dict[str, any]:
     """
     Get last month Profit & Loss report (quick access).
     """
@@ -253,7 +253,7 @@ def get_last_month_pl() -> dict[str, Any]:
 
 
 @mcp.tool()
-def get_company_financial_summary() -> dict[str, Any]:
+def get_company_financial_summary() -> dict[str, any]:
     """
     Get a comprehensive financial summary including key reports.
     """

@@ -4,7 +4,6 @@ import json
 import logging
 import webbrowser
 from pathlib import Path
-from typing import Optional, Dict, Any
 from urllib.parse import parse_qs, urlparse
 import threading
 import time
@@ -159,8 +158,9 @@ class QBOAuthManager:
         finally:
             server.shutdown()
     
-    def ensure_authenticated(self) -> bool:
-        """Ensure we have valid authentication."""
+    def ensure_authenticated(self, path: str | None = None) -> bool:
+        """Ensure we have valid authentication. Runs with arg: --auth <path> on
+        execution, where <path> is the optionally provided path to the token file."""
         # Check if we have tokens
         if not self.auth_client.access_token:
             logger.info("No access token, starting OAuth flow...")
@@ -181,7 +181,7 @@ class QBOAuthManager:
         logger.info("No refresh token, starting OAuth flow...")
         return self._perform_oauth_flow()
     
-    def get_authenticated_client(self) -> Optional[QuickBooks]:
+    def get_authenticated_client(self) -> QuickBooks | None:
         """Get authenticated QuickBooks client."""
         if not self.ensure_authenticated():
             return None
@@ -222,7 +222,7 @@ class QBOAuthManager:
         """Check if authenticated."""
         return bool(self.auth_client.access_token and self.auth_client.realm_id)
     
-    def get_company_info(self) -> dict[str, Any] | None:
+    def get_company_info(self) -> dict[str, any] | None:
         """Get company info."""
         if not self.is_authenticated:
             return {

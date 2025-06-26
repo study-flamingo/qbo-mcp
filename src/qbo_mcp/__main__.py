@@ -12,25 +12,29 @@ import sys
 from .server import mcp
 from .auth import authenticator
 
+logger = logging.getLogger("qbo_mcp")
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s:%(name)s:%(levelname)s: %(message)s",
+)
 
 def main():
-    # Configure logging
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    )
 
     # Setup argument parser
     parser = argparse.ArgumentParser(description="QuickBooks Online MCP Server")
     parser.add_argument(
-        "--auth",
+        "-a", "--auth",
         action="store_true",
+        nargs=2,
         help="Run the interactive OAuth2 authorization flow to get initial tokens.",
     )
     args = parser.parse_args()
 
     if args.auth:
-        authenticator.ensure_authenticated()
+        auth_path = args.auth[0]
+        authenticator.ensure_authenticated(path=auth_path)
     else:
         # Run the MCP server
         logging.info("Starting MCP server...")

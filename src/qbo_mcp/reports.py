@@ -278,8 +278,10 @@ class QBOReportsGenerator:
         """Process raw Cash Flow report data."""
         return self._process_profit_loss_report(report_data)
     
-    def _process_aging_report(self, report_data: dict[str, Any], report_type: str) -> dict[str, Any]:
+    def _process_aging_report(self, report_data: dict[str, Any] | None, report_type: str) -> dict[str, Any]:
         """Process aging report data (A/R or A/P)."""
+        if report_data is None:
+            return {"error": "No report data provided", "report_type": report_type}
         try:
             header = report_data.get("Header", {})
             rows = report_data.get("Rows", [])
@@ -313,9 +315,7 @@ class QBOReportsGenerator:
                             "over_90_days": over_90,
                             "total": total
                         })
-            
             return processed
-            
         except Exception as e:
             logger.error(f"Error processing aging report: {e}")
             return {"error": str(e), "raw_data": report_data}

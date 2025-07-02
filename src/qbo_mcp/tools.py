@@ -1,6 +1,7 @@
 import logging
 from datetime import date, datetime
-from typing import any
+from typing import Any
+from fastmcp.server import FastMCP
 
 from .auth import authenticator
 from .models import *
@@ -13,6 +14,7 @@ from .reports import (
     get_current_year_period,
     get_last_month_period
 )
+from .server import mcp
 
 logger = logging.getLogger("qbo_mcp")
 
@@ -40,31 +42,24 @@ def ensure_authenticated_response(func):
             # Check configuration first
             config_errors = config.validate()
             if config_errors:
-                return {
-                    "status": "error",
-                    "message": f"Configuration errors: {', '.join(config_errors)}. Please set up your .env file with QuickBooks app credentials."
-                }
+                raise ValueError(f"Configuration errors: {', '.join(config_errors)}. Please set up your .env file with QuickBooks app credentials.")
             
             # Ensure authentication (will handle OAuth flow if needed)
             if not authenticator.ensure_authenticated():
-                return {
-                    "status": "error",
-                    "message": "Failed to authenticate with QuickBooks Online. Please check your credentials and try again."
-                }
+                raise ValueError("Failed to authenticate with QuickBooks Online. Please check your credentials and try again.")
             
             # Execute the original function
             return func(*args, **kwargs)
-            
         except Exception as e:
             logger.error(f"Error in {func.__name__}: {e}")
-            return {"status": "error", "message": str(e)}
+            raise e
     
     return wrapper
 
 # Report generation tools
-@mcp.tool()
 @ensure_authenticated_response
-def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, any]:
+@mcp.tool()
+def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, Any]:
     """
     Generate a Profit & Loss report from QuickBooks Online.
     """
@@ -83,9 +78,9 @@ def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, any]:
     }
 
 
-@mcp.tool()
 @ensure_authenticated_response
-def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, any]:
+@mcp.tool()
+def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, Any]:
     """
     Generate a Balance Sheet report from QuickBooks Online.
     """
@@ -101,9 +96,9 @@ def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, any
     }
 
 
-@mcp.tool()
 @ensure_authenticated_response
-def generate_cash_flow_report(request: CashFlowRequest) -> dict[str, any]:
+@mcp.tool()
+def generate_cash_flow_report(request: CashFlowRequest) -> dict[str, Any]:
     """
     Generate a Cash Flow statement from QuickBooks Online.
     """
@@ -122,9 +117,9 @@ def generate_cash_flow_report(request: CashFlowRequest) -> dict[str, any]:
     }
 
 
-@mcp.tool()
 @ensure_authenticated_response
-def generate_ar_aging_report(request: AgingRequest) -> dict[str, any]:
+@mcp.tool()
+def generate_ar_aging_report(request: AgingRequest) -> dict[str, Any]:
     """
     Generate an Accounts Receivable Aging report from QuickBooks Online.
     """
@@ -140,9 +135,9 @@ def generate_ar_aging_report(request: AgingRequest) -> dict[str, any]:
     }
 
 
-@mcp.tool()
 @ensure_authenticated_response
-def generate_ap_aging_report(request: AgingRequest) -> dict[str, any]:
+@mcp.tool()
+def generate_ap_aging_report(request: AgingRequest) -> dict[str, Any]:
     """
     Generate an Accounts Payable Aging report from QuickBooks Online.
     """
@@ -158,9 +153,9 @@ def generate_ap_aging_report(request: AgingRequest) -> dict[str, any]:
     }
 
 
-@mcp.tool()
 @ensure_authenticated_response
-def generate_sales_by_customer_report(request: SalesCustomerRequest) -> dict[str, any]:
+@mcp.tool()
+def generate_sales_by_customer_report(request: SalesCustomerRequest) -> dict[str, Any]:
     """
     Generate a Sales by Customer report from QuickBooks Online.
     """
@@ -179,9 +174,9 @@ def generate_sales_by_customer_report(request: SalesCustomerRequest) -> dict[str
     }
 
 
-@mcp.tool()
 @ensure_authenticated_response
-def generate_expenses_by_vendor_report(request: ExpensesVendorRequest) -> dict[str, any]:
+@mcp.tool()
+def generate_expenses_by_vendor_report(request: ExpensesVendorRequest) -> dict[str, Any]:
     """
     Generate an Expenses by Vendor report from QuickBooks Online.
     """
@@ -202,7 +197,7 @@ def generate_expenses_by_vendor_report(request: ExpensesVendorRequest) -> dict[s
 
 # Quick period report tools for common use cases
 @mcp.tool()
-def get_current_month_pl() -> dict[str, any]:
+def get_current_month_pl() -> dict[str, Any]:
     """
     Get current month Profit & Loss report (quick access).
     """
@@ -211,7 +206,7 @@ def get_current_month_pl() -> dict[str, any]:
 
 
 @mcp.tool()
-def get_current_quarter_pl() -> dict[str, any]:
+def get_current_quarter_pl() -> dict[str, Any]:
     """
     Get current quarter Profit & Loss report (quick access).
     """
@@ -225,7 +220,7 @@ def get_current_quarter_pl() -> dict[str, any]:
 
 
 @mcp.tool()
-def get_current_year_pl() -> dict[str, any]:
+def get_current_year_pl() -> dict[str, Any]:
     """
     Get current year Profit & Loss report (quick access).
     """
@@ -239,7 +234,7 @@ def get_current_year_pl() -> dict[str, any]:
 
 
 @mcp.tool()
-def get_last_month_pl() -> dict[str, any]:
+def get_last_month_pl() -> dict[str, Any]:
     """
     Get last month Profit & Loss report (quick access).
     """
@@ -253,7 +248,7 @@ def get_last_month_pl() -> dict[str, any]:
 
 
 @mcp.tool()
-def get_company_financial_summary() -> dict[str, any]:
+def get_company_financial_summary() -> dict[str, Any]:
     """
     Get a comprehensive financial summary including key reports.
     """
@@ -294,6 +289,7 @@ def get_company_financial_summary() -> dict[str, any]:
     except Exception as e:
         logger.error(f"Error generating financial summary: {e}")
         return {"status": "error", "message": str(e)}
+
 
 __all__ = [
     "generate_profit_loss_report",

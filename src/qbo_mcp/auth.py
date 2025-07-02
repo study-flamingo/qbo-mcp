@@ -5,6 +5,7 @@ import logging
 import webbrowser
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
+from typing import Any
 import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -222,7 +223,7 @@ class QBOAuthManager:
         """Check if authenticated."""
         return bool(self.auth_client.access_token and self.auth_client.realm_id)
     
-    def get_company_info(self) -> dict[str, any] | None:
+    def get_company_info(self) -> dict[str, Any] | None:
         """Get company info."""
         if not self.is_authenticated:
             return {

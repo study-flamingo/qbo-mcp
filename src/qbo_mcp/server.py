@@ -8,15 +8,17 @@ from .config import config
 
 
 # Configure logging
+logger = logging.getLogger("qbo_mcp")
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s:%(name)s:%(levelname)s: %(message)s'
 )
-logger = logging.getLogger("qbo_mcp")
 
 # Initialize FastMCP server
 mcp = FastMCP("qbo-mcp - QuickBooks Online MCP Server")
 from .tools import *
+logger.debug("✅ Tools loaded")
+
 
 
 if __name__ == "__main__":
@@ -29,5 +31,5 @@ if __name__ == "__main__":
         logger.debug("✅ Config OK")
     
     # Run the server
-    logger.info("🚀 Starting QuickBooks Online MCP Server")
+    logger.info("💸 Starting QuickBooks Online MCP Server")
     mcp.run()

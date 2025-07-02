@@ -1,6 +1,6 @@
 """Pydantic models for tool inputs"""
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from datetime import time, datetime, timedelta
 
 
@@ -62,7 +62,7 @@ class ReportPeriodModel(BaseModel):
     start_date: str = Field(default_factory=lambda: get_current_datetime(include=["year", "month", "day"], first_day_of_month=True), description="Start date in YYYY-MM-DD format")
     end_date: str = Field(default_factory=lambda: get_current_datetime(include=["year", "month", "day"], last_day_of_month=True), description="End date in YYYY-MM-DD format")
 
-    @validator('start_date', 'end_date', pre=True)
+    @field_validator('start_date', 'end_date', mode='before')
     def convert_datetime_to_str(cls, v):
         if isinstance(v, datetime):
             return v.strftime("%Y-%m-%d")

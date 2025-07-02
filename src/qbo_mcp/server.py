@@ -16,7 +16,9 @@ logging.basicConfig(
 
 # Initialize FastMCP server
 mcp = FastMCP("qbo-mcp - QuickBooks Online MCP Server")
-from .tools import *
+
+# Intentionally import after mcp definition to break circular dependency
+from .tools import *  # ruff: noqa: E402
 logger.debug("✅ Tools loaded")
 
 

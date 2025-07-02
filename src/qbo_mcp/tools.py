@@ -58,11 +58,8 @@ def ensure_authenticated_response(func):
 
 # Report generation tools
 @ensure_authenticated_response
-@mcp.tool()
-def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, Any]:
-    """
-    Generate a Profit & Loss report from QuickBooks Online.
-    """
+def _generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, Any]:
+    """Internal function to generate a Profit & Loss report."""
     period = create_report_period(request.period)
     report = reports_generator.get_profit_and_loss(period, request.summarize_by)
     
@@ -77,13 +74,17 @@ def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, Any]:
         "data": report
     }
 
+@mcp.tool()
+def generate_profit_loss_report(request: ProfitLossRequest) -> dict[str, Any]:
+    """
+    Generate a Profit & Loss report from QuickBooks Online.
+    """
+    return _generate_profit_loss_report(request)
+
 
 @ensure_authenticated_response
-@mcp.tool()
-def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, Any]:
-    """
-    Generate a Balance Sheet report from QuickBooks Online.
-    """
+def _generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, Any]:
+    """Internal function to generate a Balance Sheet report."""
     as_of_date = parse_date(request.as_of_date) if request.as_of_date else date.today()
     report = reports_generator.get_balance_sheet(as_of_date, request.summarize_by)
     
@@ -94,6 +95,13 @@ def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, Any
         "company_info": authenticator.get_company_info(),
         "data": report
     }
+
+@mcp.tool()
+def generate_balance_sheet_report(request: BalanceSheetRequest) -> dict[str, Any]:
+    """
+    Generate a Balance Sheet report from QuickBooks Online.
+    """
+    return _generate_balance_sheet_report(request)
 
 
 @ensure_authenticated_response
@@ -118,11 +126,8 @@ def generate_cash_flow_report(request: CashFlowRequest) -> dict[str, Any]:
 
 
 @ensure_authenticated_response
-@mcp.tool()
-def generate_ar_aging_report(request: AgingRequest) -> dict[str, Any]:
-    """
-    Generate an Accounts Receivable Aging report from QuickBooks Online.
-    """
+def _generate_ar_aging_report(request: AgingRequest) -> dict[str, Any]:
+    """Internal function to generate an Accounts Receivable Aging report."""
     as_of_date = parse_date(request.as_of_date) if request.as_of_date else date.today()
     report = reports_generator.get_accounts_receivable_aging(as_of_date)
     
@@ -134,13 +139,17 @@ def generate_ar_aging_report(request: AgingRequest) -> dict[str, Any]:
         "data": report
     }
 
+@mcp.tool()
+def generate_ar_aging_report(request: AgingRequest) -> dict[str, Any]:
+    """
+    Generate an Accounts Receivable Aging report from QuickBooks Online.
+    """
+    return _generate_ar_aging_report(request)
+
 
 @ensure_authenticated_response
-@mcp.tool()
-def generate_ap_aging_report(request: AgingRequest) -> dict[str, Any]:
-    """
-    Generate an Accounts Payable Aging report from QuickBooks Online.
-    """
+def _generate_ap_aging_report(request: AgingRequest) -> dict[str, Any]:
+    """Internal function to generate an Accounts Payable Aging report."""
     as_of_date = parse_date(request.as_of_date) if request.as_of_date else date.today()
     report = reports_generator.get_accounts_payable_aging(as_of_date)
     
@@ -151,6 +160,13 @@ def generate_ap_aging_report(request: AgingRequest) -> dict[str, Any]:
         "company_info": authenticator.get_company_info(),
         "data": report
     }
+
+@mcp.tool()
+def generate_ap_aging_report(request: AgingRequest) -> dict[str, Any]:
+    """
+    Generate an Accounts Payable Aging report from QuickBooks Online.
+    """
+    return _generate_ap_aging_report(request)
 
 
 @ensure_authenticated_response
@@ -196,13 +212,18 @@ def generate_expenses_by_vendor_report(request: ExpensesVendorRequest) -> dict[s
 
 
 # Quick period report tools for common use cases
+@ensure_authenticated_response
+def _get_current_month_pl() -> dict[str, Any]:
+    """Internal function to get current month Profit & Loss report."""
+    request = ProfitLossRequest(period=None, summarize_by="Month")
+    return _generate_profit_loss_report(request)
+
 @mcp.tool()
 def get_current_month_pl() -> dict[str, Any]:
     """
     Get current month Profit & Loss report (quick access).
     """
-    request = ProfitLossRequest(period=None, summarize_by="Month")
-    return generate_profit_loss_report(request)
+    return _get_current_month_pl()
 
 
 @mcp.tool()
@@ -216,7 +237,7 @@ def get_current_quarter_pl() -> dict[str, Any]:
         end_date=period.end_date.isoformat()
     )
     request = ProfitLossRequest(period=period_model, summarize_by="Quarter")
-    return generate_profit_loss_report(request)
+    return _generate_profit_loss_report(request)
 
 
 @mcp.tool()
@@ -230,7 +251,7 @@ def get_current_year_pl() -> dict[str, Any]:
         end_date=period.end_date.isoformat()
     )
     request = ProfitLossRequest(period=period_model, summarize_by="Year")
-    return generate_profit_loss_report(request)
+    return _generate_profit_loss_report(request)
 
 
 @mcp.tool()
@@ -244,7 +265,7 @@ def get_last_month_pl() -> dict[str, Any]:
         end_date=period.end_date.isoformat()
     )
     request = ProfitLossRequest(period=period_model, summarize_by="Month")
-    return generate_profit_loss_report(request)
+    return _generate_profit_loss_report(request)
 
 
 @mcp.tool()
@@ -268,10 +289,10 @@ def get_company_financial_summary() -> dict[str, Any]:
             }
         
         # Get current month data
-        current_month_pl = get_current_month_pl()
-        balance_sheet = generate_balance_sheet_report(BalanceSheetRequest())
-        ar_aging = generate_ar_aging_report(AgingRequest())
-        ap_aging = generate_ap_aging_report(AgingRequest())
+        current_month_pl = _get_current_month_pl()
+        balance_sheet = _generate_balance_sheet_report(BalanceSheetRequest())
+        ar_aging = _generate_ar_aging_report(AgingRequest())
+        ap_aging = _generate_ap_aging_report(AgingRequest())
         
         return {
             "status": "success",

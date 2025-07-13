@@ -40,7 +40,7 @@ A Model Context Protocol (MCP) server for integrating with QuickBooks Online, bu
 
 1. **Setup the project:**
    ```bash
-   cd C:/Users/JoelCasimir/Code/Repos/mcp-dev/qbo-mcp
+   cd .../mcp-dev/qbo-mcp
    uv sync
    ```
 

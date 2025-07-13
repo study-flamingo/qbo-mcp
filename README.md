@@ -53,7 +53,7 @@ A Model Context Protocol (MCP) server for integrating with QuickBooks Online, bu
 3. **Set up your QuickBooks app:**
    - Go to [Intuit Developer Console](https://developer.intuit.com/app/developer/myapps)
    - Create a new app or use existing one
-   - **Important**: Add redirect URI: `http://localhost:8080/callback`
+   - **Important**: Add redirect URI: `http://localhost:8000/callback`
    - Note your Client ID and Client Secret
 
 ## ⚙️ Configuration
@@ -66,7 +66,7 @@ QBO_CLIENT_ID=your_client_id_here
 QBO_CLIENT_SECRET=your_client_secret_here
 
 # OAuth callback URL (must match your app settings exactly)
-QBO_REDIRECT_URI=http://localhost:8080/callback
+QBO_REDIRECT_URI=http://localhost:8000/callback
 
 # Environment: sandbox (for testing) or production (for live data)
 QBO_ENVIRONMENT=sandbox
@@ -219,7 +219,7 @@ Solution: Ensure .env file has QBO_CLIENT_ID and QBO_CLIENT_SECRET set
 
 **"Failed to authenticate" errors:**
 ```
-1. Check that redirect URI in your QuickBooks app matches: http://localhost:8080/callback
+1. Check that redirect URI in your QuickBooks app matches: http://localhost:8000/callback
 2. Verify Client ID and Secret are correct
 3. Ensure you're using the right environment (sandbox vs production)
 ```

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "qbo-mcp-dev": {
+      "command": "uv",
+      "args": [
+        "run",
+        "qbo-mcp-dev"
+      ],
+      "disabled": true,
+      "alwaysAllow": []
+    }
+  }
+}

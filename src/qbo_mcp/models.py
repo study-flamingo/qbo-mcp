@@ -68,18 +68,17 @@ class ReportPeriodModel(BaseModel):
             return v.strftime("%Y-%m-%d")
         return v
 
-def str_to_ReportPeriodModel(start_date: str | None = None, end_date: str | None = None) -> ReportPeriodModel:
-    """Helper function to convert a string to ReportPeriodModel. Takes
-    start and end date strings in YYYY-MM-DD format and returns a
-    ReportPeriodModel instance. If no string is provided, defaults to
-    the current month."""
-    
-    if not start_date:
-        start_date = get_current_datetime(include=["year", "month", "day"])
-    if not end_date:
-        end_date = get_current_datetime(include=["year", "month", "day"])
-    
-    return ReportPeriodModel(start_date=start_date, end_date=end_date)
+    @classmethod
+    def from_strings(cls, start_date: str | None = None, end_date: str | None = None) -> "ReportPeriodModel":
+        """
+        Constructs a ReportPeriodModel from string dates.
+        Dates should be in YYYY-MM-DD format.
+        """
+        if not start_date:
+            start_date = get_current_datetime(include=["year", "month", "day"], first_day_of_month=True)
+        if not end_date:
+            end_date = get_current_datetime(include=["year", "month", "day"], last_day_of_month=True)
+        return cls(start_date=start_date, end_date=end_date)
 
 
 class ProfitLossRequest(BaseModel):
@@ -87,32 +86,63 @@ class ProfitLossRequest(BaseModel):
     period: ReportPeriodModel | None = Field(..., description="Custom period (defaults to current month)")
     summarize_by: str = Field("Month", description="How to summarize columns (Month, Quarter, Year)")
 
+    @classmethod
+    def from_strings(cls, start_date: str | None = None, end_date: str | None = None, summarize_by: str = "Month") -> "ProfitLossRequest":
+        period = ReportPeriodModel.from_strings(start_date=start_date, end_date=end_date)
+        return cls(period=period, summarize_by=summarize_by)
+
 
 class BalanceSheetRequest(BaseModel):
     """Request model for Balance Sheet report."""
     as_of_date: str = Field(default_factory=lambda: get_current_datetime(include=["year", "month", "day"]), description="Date in YYYY-MM-DD format (defaults to today)")
     summarize_by: str = Field(default="Month", description="How to summarize columns")
 
+    @classmethod
+    def from_strings(cls, as_of_date: str | None = None, summarize_by: str = "Month") -> "BalanceSheetRequest":
+        if as_of_date is None:
+            as_of_date = get_current_datetime(include=["year", "month", "day"])
+        return cls(as_of_date=as_of_date, summarize_by=summarize_by)
+
 
 class CashFlowRequest(BaseModel):
     """Request model for Cash Flow report."""
     period: ReportPeriodModel | None = Field(None, description="Custom period (defaults to current month)")
+
+    @classmethod
+    def from_strings(cls, start_date: str | None = None, end_date: str | None = None) -> "CashFlowRequest":
+        period = ReportPeriodModel.from_strings(start_date=start_date, end_date=end_date)
+        return cls(period=period)
 
 
 class AgingRequest(BaseModel):
     """Request model for aging reports."""
     as_of_date: str = Field(default_factory=lambda: get_current_datetime(include=["year", "month", "day"]), description="Date in YYYY-MM-DD format (defaults to today)")
 
+    @classmethod
+    def from_strings(cls, as_of_date: str | None = None) -> "AgingRequest":
+        if as_of_date is None:
+            as_of_date = get_current_datetime(include=["year", "month", "day"])
+        return cls(as_of_date=as_of_date)
+
 
 class SalesCustomerRequest(BaseModel):
     """Request model for Sales by Customer report."""
     period: ReportPeriodModel | None = Field(None, description="Custom period (defaults to current month)")
+
+    @classmethod
+    def from_strings(cls, start_date: str | None = None, end_date: str | None = None) -> "SalesCustomerRequest":
+        period = ReportPeriodModel.from_strings(start_date=start_date, end_date=end_date)
+        return cls(period=period)
 
 
 class ExpensesVendorRequest(BaseModel):
     """Request model for Expenses by Vendor report."""
     period: ReportPeriodModel | None = Field(None, description="Custom period (defaults to current month)")
 
+    @classmethod
+    def from_strings(cls, start_date: str | None = None, end_date: str | None = None) -> "ExpensesVendorRequest":
+        period = ReportPeriodModel.from_strings(start_date=start_date, end_date=end_date)
+        return cls(period=period)
 
 
 __all__ = [

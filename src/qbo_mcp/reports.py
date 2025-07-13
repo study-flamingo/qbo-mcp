@@ -9,7 +9,7 @@ from quickbooks.objects import Account, Item, Customer, Vendor
 
 from .auth import authenticator
 
-logger = logging.getLogger("qbo_mcp")
+logger = logging.getLogger()
 
 
 

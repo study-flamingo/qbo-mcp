@@ -5,15 +5,24 @@ description = "MCP server for QuickBooks Online integration"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastmcp>=2.9.0",
+    "fastmcp>=2.10.0",
     "intuit-oauth>=1.2.6",
     "mcp[cli]>=1.6.0",
     "python-dotenv>=1.1.0",
     "python-quickbooks>=0.9.12",
 ]
 
+[tool.uv]
+package = true
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
 [project.scripts]
 qbo-mcp = "qbo_mcp:main"
+qbo-mcp-dev = "qbo_mcp:main"
 
 [tool.ruff]
 line-length = 100
@@ -30,6 +39,8 @@ select = [
 ignore = [
     "W293",  # blank line contains whitespace
     "E501",  # line too long
+    "E401",  # import not at top of file
+    "E402",  # module level import not at top of file
     "F403",  # 'from module import *' used; unable to detect undefined
     "F405",  # name may be undefined, or defined from star imports
 ]

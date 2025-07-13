@@ -6,10 +6,14 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
-load_dotenv()
+logger = logging.getLogger()
 
-logging.getLogger("qbo_mcp")
+# Load environment variables from .env file
+if not load_dotenv():
+    logger.warning(".env file not found in project root!")
+else:
+    logger.info(".env file loaded")
+
 
 class QBOConfig:
     """Configuration class for QuickBooks Online integration."""
@@ -18,12 +22,12 @@ class QBOConfig:
         """Initialize configuration from environment variables."""
         self.client_id: str = os.getenv("QBO_CLIENT_ID", "")
         self.client_secret: str = os.getenv("QBO_CLIENT_SECRET", "")
-        self.redirect_uri: str = os.getenv("QBO_REDIRECT_URI", "http://localhost:8080/callback")
+        self.redirect_uri: str = os.getenv("QBO_REDIRECT_URI", "http://localhost:8000/callback")
         self.scope: str = os.getenv("QBO_SCOPE", "com.intuit.quickbooks.accounting")
         self.environment: str = os.getenv("QBO_ENVIRONMENT", "sandbox")  # sandbox or production
         self.discovery_document_url: str = os.getenv(
             "QBO_DISCOVERY_DOCUMENT_URL",
-            "https://appcenter.intuit.com/api/v1/OpenID_basic_address_email_profile_phone"
+            "https://developer.intuit.com/.well-known/openid_sandbox_configuration/"
         )
         
         # Token storage

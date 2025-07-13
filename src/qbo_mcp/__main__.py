@@ -1,8 +1,5 @@
 """
 QuickBooks Online MCP Server - Entry Point
-
-This file serves as the entry point for the QuickBooks Online MCP server.
-It imports and runs the server implementation from the src/qbo_mcp package.
 """
 
 import argparse
@@ -11,38 +8,46 @@ import sys
 
 from .server import mcp
 from .auth import authenticator
+from .config import config
 
-logger = logging.getLogger("qbo_mcp")
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s:%(name)s:%(levelname)s: %(message)s",
-)
 
 def main():
+
+    # Configure logging
+    logger = logging.getLogger()
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s:%(name)s:%(levelname)s: %(message)s",
+    )
 
     # Setup argument parser
     parser = argparse.ArgumentParser(description="QuickBooks Online MCP Server")
     parser.add_argument(
         "-a", "--auth",
         action="store_true",
-        nargs=2,
         help="Run the interactive OAuth2 authorization flow to get initial tokens.",
     )
     args = parser.parse_args()
 
     if args.auth:
-        auth_path = args.auth[0]
-        authenticator.ensure_authenticated(path=auth_path)
-    else:
-        # Run the MCP server
-        logging.info("Starting MCP server...")
         try:
-            mcp.run()
+            authenticator.ensure_authenticated()
         except Exception as e:
-            logging.error(f"Failed to start server: {e}")
+            logger.error(f"Failed to authenticate: {e}")
             sys.exit(1)
+    else:
+        # Check configuration on startup
+        config_errors = config.validate()
+        if config_errors:
+            for error in config_errors:
+                logger.error(f"❌ {error}")
+        else:
+            logger.info("✅ Config OK")
+        
+        # Run the server
+        logger.info("💸 Starting QuickBooks Online MCP Server")
+        mcp.run()
 
 if __name__ == "__main__":
     main()

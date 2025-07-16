@@ -6,9 +6,8 @@ from dataclasses import dataclass
 from typing import Any
 
 from quickbooks import QuickBooks
-from quickbooks.objects import Account, Item, Customer, Vendor
 
-from .auth import authenticator
+from .auth import qbo_service
 
 logger = logging.getLogger()
 
@@ -40,10 +39,11 @@ class QBOReportsGenerator:
         if self.qb_client:
             return self.qb_client
         
-        client = authenticator.get_authenticated_client()
-        if not client:
-            raise ValueError("Failed to authenticate with QuickBooks Online")
-        return client
+        try:
+            client = qbo_service.get_authenticated_client()
+            return client
+        except ValueError as e:
+            raise ValueError(f"Failed to authenticate: {str(e)}")
     
     def get_profit_and_loss(self, period: ReportPeriod,
                            summarize_column_by: str = "Month") -> dict[str, Any]:
@@ -56,6 +56,8 @@ class QBOReportsGenerator:
         """
         try:
             client = self._get_client()
+            if not client:
+                raise ValueError("Authenticated client not found!")
             
             # Build report parameters
             params = {
@@ -65,6 +67,8 @@ class QBOReportsGenerator:
             
             # Get P&L report from QuickBooks
             report_data = client.get_report("ProfitAndLoss", params)
+            if not report_data:
+                raise ValueError("No report data returned")
             
             # Process and structure the report data
             processed_report = self._process_profit_loss_report(report_data)
@@ -73,8 +77,7 @@ class QBOReportsGenerator:
             return processed_report
             
         except Exception as e:
-            logger.error(f"Error generating P&L report: {e}")
-            raise
+            raise ValueError(f"Error generating P&L report: {str(e)}")
     
     def get_balance_sheet(self, as_of_date: date,
                          summarize_column_by: str = "Month") -> dict[str, Any]:
@@ -94,13 +97,16 @@ class QBOReportsGenerator:
             }
             
             report_data = client.get_report("BalanceSheet", params)
+            if not report_data:
+                raise ValueError("No report data returned")
+            
             processed_report = self._process_balance_sheet_report(report_data)
             
             logger.info(f"Generated Balance Sheet as of {as_of_date}")
             return processed_report
             
         except Exception as e:
-            logger.error(f"Error generating Balance Sheet: {e}")
+            logger.error(f"Error generating Balance Sheet: {str(e)}")
             raise
     
     def get_cash_flow(self, period: ReportPeriod) -> dict[str, Any]:
@@ -115,13 +121,16 @@ class QBOReportsGenerator:
             
             params = period.to_qb_format()
             report_data = client.get_report("CashFlow", params)
+            if not report_data:
+                raise ValueError("No report data returned")
+            
             processed_report = self._process_cash_flow_report(report_data)
             
             logger.info(f"Generated Cash Flow for {period.start_date} to {period.end_date}")
             return processed_report
             
         except Exception as e:
-            logger.error(f"Error generating Cash Flow report: {e}")
+            logger.error(f"Error generating Cash Flow report: {str(e)}")
             raise
     
     def get_accounts_receivable_aging(self, as_of_date: date | None = None) -> dict[str, Any]:
@@ -148,7 +157,7 @@ class QBOReportsGenerator:
             return processed_report
             
         except Exception as e:
-            logger.error(f"Error generating A/R Aging report: {e}")
+            logger.error(f"Error generating A/R Aging report: {str(e)}")
             raise
     
     def get_accounts_payable_aging(self, as_of_date: date | None = None) -> dict[str, Any]:
@@ -175,7 +184,7 @@ class QBOReportsGenerator:
             return processed_report
             
         except Exception as e:
-            logger.error(f"Error generating A/P Aging report: {e}")
+            logger.error(f"Error generating A/P Aging report: {str(e)}")
             raise
     
     def get_sales_by_customer(self, period: ReportPeriod) -> dict[str, Any]:
@@ -190,13 +199,16 @@ class QBOReportsGenerator:
             
             params = period.to_qb_format()
             report_data = client.get_report("CustomerSales", params)
+            if not report_data:
+                raise ValueError("No report data returned")
+            
             processed_report = self._process_sales_report(report_data)
             
             logger.info(f"Generated Sales by Customer for {period.start_date} to {period.end_date}")
             return processed_report
             
         except Exception as e:
-            logger.error(f"Error generating Sales by Customer report: {e}")
+            logger.error(f"Error generating Sales by Customer report: {str(e)}")
             raise
     
     def get_expenses_by_vendor(self, period: ReportPeriod) -> dict[str, Any]:
@@ -211,13 +223,16 @@ class QBOReportsGenerator:
             
             params = period.to_qb_format()
             report_data = client.get_report("VendorExpenses", params)
+            if not report_data:
+                raise ValueError("No report data returned")
+
             processed_report = self._process_expenses_report(report_data)
             
             logger.info(f"Generated Expenses by Vendor for {period.start_date} to {period.end_date}")
             return processed_report
             
         except Exception as e:
-            logger.error(f"Error generating Expenses by Vendor report: {e}")
+            logger.error(f"Error generating Expenses by Vendor report: {str(e)}")
             raise
     
     def _process_profit_loss_report(self, report_data: dict[str, Any]) -> dict[str, Any]:
@@ -266,7 +281,7 @@ class QBOReportsGenerator:
             return processed
             
         except Exception as e:
-            logger.error(f"Error processing P&L report: {e}")
+            logger.error(f"Error processing P&L report: {str(e)}")
             return {"error": str(e), "raw_data": report_data}
     
     def _process_balance_sheet_report(self, report_data: dict[str, Any]) -> dict[str, Any]:
@@ -317,7 +332,7 @@ class QBOReportsGenerator:
                         })
             return processed
         except Exception as e:
-            logger.error(f"Error processing aging report: {e}")
+            logger.error(f"Error processing aging report: {str(e)}")
             return {"error": str(e), "raw_data": report_data}
     
     def _process_sales_report(self, report_data: dict[str, Any]) -> dict[str, Any]:

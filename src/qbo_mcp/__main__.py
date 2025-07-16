@@ -7,7 +7,7 @@ import logging
 import sys
 
 from .server import mcp
-from .auth import authenticator
+from .auth import qbo_service
 from .config import config
 
 
@@ -32,9 +32,9 @@ def main():
 
     if args.auth:
         try:
-            authenticator.ensure_authenticated()
+            qbo_service.ensure_authenticated()
         except Exception as e:
-            logger.error(f"Failed to authenticate: {e}")
+            logger.error(f"Failed to authenticate: {str(e)}")
             sys.exit(1)
     else:
         # Check configuration on startup

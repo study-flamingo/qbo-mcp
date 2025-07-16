@@ -4,9 +4,10 @@ import logging
 from fastmcp import FastMCP
 
 from .models import *
-from .config import config
+from .config import *
+from .auth import *
 from dotenv import load_dotenv
-from .tools import register_tools
+from .tools import *
 
 
 # Configure logging

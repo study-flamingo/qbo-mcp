@@ -6,7 +6,7 @@ import jsonschema
 from fastmcp.server import FastMCP
 from pydantic import Field
 
-from .auth import authenticator
+from .auth import qbo_service
 from .config import config
 from .reports import (
     reports_generator,
@@ -103,8 +103,14 @@ def _ensure_authenticated_and_handle_errors():
     if config_errors:
         raise ValueError(f"Configuration errors: {', '.join(config_errors)}. Please set up your .env file with QuickBooks app credentials.")
     
-    if not authenticator.ensure_authenticated():
-        raise ValueError("Failed to authenticate with QuickBooks Online. Please check your credentials and try again.")
+    try:
+        qbo_service.ensure_authenticated()
+    except ValueError as e:
+        raise e
+    except Exception as e:
+        raise ValueError(f"Auth check error: {str(e)}")
+    finally:
+        print("Auth check successful")
 
 
 def _generate_profit_loss_report(start_date: str | None, end_date: str | None, summarize_by: str = "Month") -> dict[str, Any]:
@@ -114,8 +120,11 @@ def _generate_profit_loss_report(start_date: str | None, end_date: str | None, s
         "summarize_by": summarize_by
     }
     validate_json_schema(input_dict, PROFIT_LOSS_REQUEST_SCHEMA, name="ProfitLossRequest")
-    period = create_report_period(start_date, end_date)
-    report = reports_generator.get_profit_and_loss(period, summarize_by)
+    try:
+        period = create_report_period(start_date, end_date)
+        report = reports_generator.get_profit_and_loss(period, summarize_by)
+    except Exception as e:
+        raise ValueError(f"Error generating P&L report: {str(e)}")
     return {
         "status": "success",
         "report_type": "Profit & Loss",
@@ -123,7 +132,7 @@ def _generate_profit_loss_report(start_date: str | None, end_date: str | None, s
             "start_date": period.start_date.isoformat(),
             "end_date": period.end_date.isoformat()
         },
-        "company_info": authenticator.get_company_info(),
+        "company_info": qbo_service.get_company_info(),
         "data": report
     }
 
@@ -140,7 +149,7 @@ def _generate_balance_sheet_report(as_of_date: str | None, summarize_by: str = "
         "status": "success",
         "report_type": "Balance Sheet",
         "as_of_date": as_of_date_dt.isoformat(),
-        "company_info": authenticator.get_company_info(),
+        "company_info": qbo_service.get_company_info(),
         "data": report
     }
 
@@ -159,7 +168,7 @@ def _generate_cash_flow_report(start_date: str | None, end_date: str | None) -> 
             "start_date": period.start_date.isoformat(),
             "end_date": period.end_date.isoformat()
         },
-        "company_info": authenticator.get_company_info(),
+        "company_info": qbo_service.get_company_info(),
         "data": report
     }
 
@@ -173,7 +182,7 @@ def _generate_ar_aging_report(as_of_date: str | None) -> dict[str, Any]:
         "status": "success",
         "report_type": "Accounts Receivable Aging",
         "as_of_date": as_of_date_dt.isoformat(),
-        "company_info": authenticator.get_company_info(),
+        "company_info": qbo_service.get_company_info(),
         "data": report
     }
 
@@ -187,7 +196,7 @@ def _generate_ap_aging_report(as_of_date: str | None) -> dict[str, Any]:
         "status": "success",
         "report_type": "Accounts Payable Aging",
         "as_of_date": as_of_date_dt.isoformat(),
-        "company_info": authenticator.get_company_info(),
+        "company_info": qbo_service.get_company_info(),
         "data": report
     }
 
@@ -206,7 +215,7 @@ def _generate_sales_by_customer_report(start_date: str | None, end_date: str | N
             "start_date": period.start_date.isoformat(),
             "end_date": period.end_date.isoformat()
         },
-        "company_info": authenticator.get_company_info(),
+        "company_info": qbo_service.get_company_info(),
         "data": report
     }
 
@@ -225,7 +234,7 @@ def _generate_expenses_by_vendor_report(start_date: str | None, end_date: str | 
             "start_date": period.start_date.isoformat(),
             "end_date": period.end_date.isoformat()
         },
-        "company_info": authenticator.get_company_info(),
+        "company_info": qbo_service.get_company_info(),
         "data": report
     }
 
@@ -241,7 +250,7 @@ def register_tools(mcp: FastMCP):
         try:
             return _generate_profit_loss_report(start_date, end_date, summarize_by)
         except ValueError as e:
-            logger.error(f"Error in generate_profit_loss_report: {e}")
+            logger.error(f"Error in generate_profit_loss_report: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     @mcp.tool()
@@ -252,7 +261,7 @@ def register_tools(mcp: FastMCP):
         try:
             return _generate_balance_sheet_report(as_of_date, summarize_by)
         except ValueError as e:
-            logger.error(f"Error in generate_balance_sheet_report: {e}")
+            logger.error(f"Error in generate_balance_sheet_report: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     @mcp.tool()
@@ -263,7 +272,7 @@ def register_tools(mcp: FastMCP):
         try:
             return _generate_cash_flow_report(start_date, end_date)
         except ValueError as e:
-            logger.error(f"Error in generate_cash_flow_report: {e}")
+            logger.error(f"Error in generate_cash_flow_report: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     @mcp.tool()
@@ -273,7 +282,7 @@ def register_tools(mcp: FastMCP):
         try:
             return _generate_ar_aging_report(as_of_date)
         except ValueError as e:
-            logger.error(f"Error in generate_ar_aging_report: {e}")
+            logger.error(f"Error in generate_ar_aging_report: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     @mcp.tool()
@@ -283,7 +292,7 @@ def register_tools(mcp: FastMCP):
         try:
             return _generate_ap_aging_report(as_of_date)
         except ValueError as e:
-            logger.error(f"Error in generate_ap_aging_report: {e}")
+            logger.error(f"Error in generate_ap_aging_report: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     @mcp.tool()
@@ -294,7 +303,7 @@ def register_tools(mcp: FastMCP):
         try:
             return _generate_sales_by_customer_report(start_date, end_date)
         except ValueError as e:
-            logger.error(f"Error in generate_sales_by_customer_report: {e}")
+            logger.error(f"Error in generate_sales_by_customer_report: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     @mcp.tool()
@@ -305,7 +314,7 @@ def register_tools(mcp: FastMCP):
         try:
             return _generate_expenses_by_vendor_report(start_date, end_date)
         except ValueError as e:
-            logger.error(f"Error in generate_expenses_by_vendor_report: {e}")
+            logger.error(f"Error in generate_expenses_by_vendor_report: {str(e)}")
             return {"status": "error", "message": str(e)}
 
     # Quick period report tools for common use cases
@@ -363,7 +372,7 @@ def register_tools(mcp: FastMCP):
                 "status": "success",
                 "summary_type": "Comprehensive Financial Summary",
                 "generated_at": datetime.now().isoformat(),
-                "company_info": authenticator.get_company_info(),
+                "company_info": qbo_service.get_company_info(),
                 "reports": {
                     "current_month_profit_loss": current_month_pl,
                     "balance_sheet": balance_sheet,
@@ -372,7 +381,7 @@ def register_tools(mcp: FastMCP):
                 }
             }
         except ValueError as e:
-            logger.error(f"Error generating financial summary: {e}")
+            logger.error(f"Error generating financial summary: {str(e)}")
             return {"status": "error", "message": str(e)}
 
 

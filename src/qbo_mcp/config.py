@@ -14,8 +14,10 @@ if not load_dotenv():
 else:
     logger.info(".env file loaded")
 
+if not os.getenv("QBO_CLIENT_ID") or not os.getenv("QBO_CLIENT_SECRET"):
+    raise ValueError("QBO_CLIENT_ID and QBO_CLIENT_SECRET must be set in the environment variables!")
 
-class QBOConfig:
+class QBOConfig():
     """Configuration class for QuickBooks Online integration."""
     
     def __init__(self):
@@ -40,7 +42,7 @@ class QBOConfig:
     @property
     def base_url(self) -> str:
         """Get the appropriate base URL for the current environment."""
-        return self.sandbox_base_url if self.environment == "sandbox" else self.production_base_url
+        return self.sandbox_base_url if self.environment != "production" else self.production_base_url
     
     @property
     def is_configured(self) -> bool:
@@ -63,3 +65,5 @@ class QBOConfig:
 
 # Global configuration instance
 config = QBOConfig()
+
+__all__ = ["config"]

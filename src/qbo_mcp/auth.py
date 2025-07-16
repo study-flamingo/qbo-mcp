@@ -2,52 +2,87 @@
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any
 
 from intuitlib.client import AuthClient
-from intuitlib.exceptions import AuthClientError
 from quickbooks import QuickBooks
 
-from .config import config
+from .config import QBOConfig, config
 
 logger = logging.getLogger()
 
 
 
-
-class QBOAuthManager:
-    """Minimal auth manager using intuit-oauth package."""
+class QBOService:
+    """Manages QBO authentication, client creation, and QuickBooks Online API interactions."""
     
-    def __init__(self, token_file: Path | None = None):
+    def __init__(self, config: QBOConfig):
         """Initialize auth manager."""
-        self.token_file = token_file or config.token_file
-        self.auth_client = AuthClient(
-            client_id=config.client_id,
-            client_secret=config.client_secret,
-            redirect_uri=config.redirect_uri,
-            environment=config.environment
-        )
-        self._load_tokens()
+        self.token_file = config.token_file
+        
+        try:
+            try:
+                with open(self.token_file, 'r') as f:
+                    tokens = json.load(f)
+            except FileNotFoundError:
+                logger.warning(f"No token file found at {self.token_file}")
+                tokens = {}
+        except Exception as e:
+            raise ValueError(f"Error reading token file: {str(e)}")
+            
+        self.access_token: str | None = tokens.get("access_token")
+        self.refresh_token: str | None = tokens.get("refresh_token")
+        
+        try:
+            self.auth_client = AuthClient(
+                client_id=config.client_id,
+                client_secret=config.client_secret,
+                redirect_uri=config.redirect_uri,
+                environment=config.environment,
+                access_token=self.access_token,
+                refresh_token=self.refresh_token,
+            )
+        except Exception as e:
+            raise ValueError(f"QBOService auth client initialization error: {str(e)}")
+        
+        try:
+            self.qbo = QuickBooks(
+                auth_client=self.auth_client,
+                refresh_token=self.auth_client.refresh_token,
+                company_id=self.auth_client.realm_id,
+            )
+        except Exception as e:
+            raise ValueError(f"QBOService startup error: {str(e)}")
+        
+        logger.info("QBOService initialized!")
     
     def _load_tokens(self) -> None:
         """Load tokens from disk into AuthClient."""
-        if not self.token_file.exists():
-            return
-        
         try:
             with open(self.token_file, 'r') as f:
                 tokens = json.load(f)
-            
-            # Set tokens directly on AuthClient - let it handle the rest
-            self.auth_client.access_token = tokens.get('access_token')
-            self.auth_client.refresh_token = tokens.get('refresh_token')
-            self.auth_client.realm_id = tokens.get('realm_id')
-            
+            if not tokens:
+                raise ValueError(f"No tokens found in {self.token_file}!")
             logger.info(f"Loaded tokens from {self.token_file}")
+        except FileNotFoundError:
+            logger.warning(f"Token file not found at {self.token_file}")
+            # If no token file, look for tokens in environment variables
+            tokens = {
+                "access_token": os.getenv("QBO_ACCESS_TOKEN"),
+                "refresh_token": os.getenv("QBO_REFRESH_TOKEN"),
+                "realm_id": os.getenv("QBO_REALM_ID", "sandbox")
+            }
+        if not all(tokens.values()):
+            raise ValueError("Missing tokens in environment variables")
+
+        # Set tokens directly on AuthClient - let it handle the rest
+        self.auth_client.access_token = tokens.get('access_token')
+        self.auth_client.refresh_token = tokens.get('refresh_token')
+        self.auth_client.realm_id = tokens.get('realm_id')
             
-        except Exception as e:
-            logger.error(f"Error loading tokens: {e}")
+            
     
     def _save_tokens(self) -> None:
         """Save AuthClient tokens to disk."""
@@ -65,32 +100,39 @@ class QBOAuthManager:
             logger.info(f"Saved tokens to {self.token_file}")
             
         except Exception as e:
-            logger.error(f"Error saving tokens: {e}")
+            logger.error(f"Error saving tokens: {str(e)}")
     
     def ensure_authenticated(self) -> bool:
         """Ensure we have valid authentication by attempting to refresh tokens."""
+        if not self.auth_client:
+            raise ValueError("Auth client not found!")
+        
         if not self.auth_client.refresh_token:
-            logger.warning("No refresh token available. Authentication not possible.")
-            return False
+            raise ValueError("No refresh token available. Please obtain new tokens manually.")
 
         try:
             self.auth_client.refresh()
             self._save_tokens()
-            logger.info("✅ Refreshed tokens")
+            logger.info("Tokens refreshed")
             return True
-        except AuthClientError as e:
-            logger.error(f"Refresh failed: {e.content} ({e.status_code}). Please obtain new tokens manually.")
-            return False
+        except Exception as e:
+            raise ValueError(f"Token refresh error: {str(e)}")
     
-    def get_authenticated_client(self) -> QuickBooks | None:
+    def get_authenticated_client(self) -> QuickBooks:
         """Get authenticated QuickBooks client."""
-        if not self.ensure_authenticated():
-            return None
+        try:
+            self.ensure_authenticated()
+        except Exception as e:
+            raise ValueError(f"Get client error: {str(e)}")
         
-        if not self.auth_client.access_token or not self.auth_client.realm_id:
-            logger.error("Missing tokens after authentication")
-            return None
+        if not self.auth_client:
+            raise ValueError("Auth client not found!")
         
+        if not self.auth_client.access_token or not self.auth_client.refresh_token:
+            raise ValueError("Missing tokens after authentication")
+        elif not self.auth_client.realm_id:
+            raise ValueError("Missing realm ID after authentication")
+
         try:
             return QuickBooks(
                 access_token=self.auth_client.access_token,
@@ -98,8 +140,7 @@ class QBOAuthManager:
                 environment=config.environment
             )
         except Exception as e:
-            logger.error(f"Error creating QuickBooks client: {e}")
-            return None
+            raise ValueError(f"Client creation error: {str(e)}")
     
     def revoke_tokens(self) -> bool:
         """Revoke tokens using intuit-oauth."""
@@ -114,9 +155,8 @@ class QBOAuthManager:
                 logger.info("✅ Revoked tokens")
                 return True
             return False
-        except AuthClientError as e:
-            logger.error(f"Revoke error: {e.status_code} - {e.content}")
-            return False
+        except Exception as e:
+            raise ValueError(f"Revocation error: {str(e)}")
     
     @property
     def is_authenticated(self) -> bool:
@@ -139,4 +179,6 @@ class QBOAuthManager:
 
 
 # Global authenticator instance
-authenticator = QBOAuthManager()
+qbo_service = QBOService(config=config)
+
+__all__ = ["qbo_service"]

@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, date, timedelta
 from dataclasses import dataclass
+from typing import Any
 
 from quickbooks import QuickBooks
 from quickbooks.objects import Account, Item, Customer, Vendor
@@ -45,7 +46,7 @@ class QBOReportsGenerator:
         return client
     
     def get_profit_and_loss(self, period: ReportPeriod,
-                           summarize_column_by: str = "Month") -> dict[str, any]:
+                           summarize_column_by: str = "Month") -> dict[str, Any]:
         """
         Generate Profit & Loss report.
         
@@ -76,7 +77,7 @@ class QBOReportsGenerator:
             raise
     
     def get_balance_sheet(self, as_of_date: date,
-                         summarize_column_by: str = "Month") -> dict[str, any]:
+                         summarize_column_by: str = "Month") -> dict[str, Any]:
         """
         Generate Balance Sheet report.
         
@@ -102,7 +103,7 @@ class QBOReportsGenerator:
             logger.error(f"Error generating Balance Sheet: {e}")
             raise
     
-    def get_cash_flow(self, period: ReportPeriod) -> dict[str, any]:
+    def get_cash_flow(self, period: ReportPeriod) -> dict[str, Any]:
         """
         Generate Cash Flow statement.
         
@@ -123,7 +124,7 @@ class QBOReportsGenerator:
             logger.error(f"Error generating Cash Flow report: {e}")
             raise
     
-    def get_accounts_receivable_aging(self, as_of_date: date | None = None) -> dict[str, any]:
+    def get_accounts_receivable_aging(self, as_of_date: date | None = None) -> dict[str, Any]:
         """
         Generate Accounts Receivable Aging report.
         
@@ -150,7 +151,7 @@ class QBOReportsGenerator:
             logger.error(f"Error generating A/R Aging report: {e}")
             raise
     
-    def get_accounts_payable_aging(self, as_of_date: date | None = None) -> dict[str, any]:
+    def get_accounts_payable_aging(self, as_of_date: date | None = None) -> dict[str, Any]:
         """
         Generate Accounts Payable Aging report.
         
@@ -177,7 +178,7 @@ class QBOReportsGenerator:
             logger.error(f"Error generating A/P Aging report: {e}")
             raise
     
-    def get_sales_by_customer(self, period: ReportPeriod) -> dict[str, any]:
+    def get_sales_by_customer(self, period: ReportPeriod) -> dict[str, Any]:
         """
         Generate Sales by Customer report.
         
@@ -198,7 +199,7 @@ class QBOReportsGenerator:
             logger.error(f"Error generating Sales by Customer report: {e}")
             raise
     
-    def get_expenses_by_vendor(self, period: ReportPeriod) -> dict[str, any]:
+    def get_expenses_by_vendor(self, period: ReportPeriod) -> dict[str, Any]:
         """
         Generate Expenses by Vendor report.
         
@@ -219,7 +220,7 @@ class QBOReportsGenerator:
             logger.error(f"Error generating Expenses by Vendor report: {e}")
             raise
     
-    def _process_profit_loss_report(self, report_data: dict[str, any]) -> dict[str, any]:
+    def _process_profit_loss_report(self, report_data: dict[str, Any]) -> dict[str, Any]:
         """Process raw P&L report data into structured format."""
         try:
             header = report_data.get("Header", {})
@@ -268,16 +269,16 @@ class QBOReportsGenerator:
             logger.error(f"Error processing P&L report: {e}")
             return {"error": str(e), "raw_data": report_data}
     
-    def _process_balance_sheet_report(self, report_data: dict[str, any]) -> dict[str, any]:
+    def _process_balance_sheet_report(self, report_data: dict[str, Any]) -> dict[str, Any]:
         """Process raw Balance Sheet report data."""
         # Similar structure to P&L processing
         return self._process_profit_loss_report(report_data)
     
-    def _process_cash_flow_report(self, report_data: dict[str, any]) -> dict[str, any]:
+    def _process_cash_flow_report(self, report_data: dict[str, Any]) -> dict[str, Any]:
         """Process raw Cash Flow report data."""
         return self._process_profit_loss_report(report_data)
     
-    def _process_aging_report(self, report_data: dict[str, any] | None, report_type: str) -> dict[str, any]:
+    def _process_aging_report(self, report_data: dict[str, Any] | None, report_type: str) -> dict[str, Any]:
         """Process aging report data (A/R or A/P)."""
         if report_data is None:
             return {"error": "No report data provided", "report_type": report_type}
@@ -319,11 +320,11 @@ class QBOReportsGenerator:
             logger.error(f"Error processing aging report: {e}")
             return {"error": str(e), "raw_data": report_data}
     
-    def _process_sales_report(self, report_data: dict[str, any]) -> dict[str, any]:
+    def _process_sales_report(self, report_data: dict[str, Any]) -> dict[str, Any]:
         """Process sales by customer report data."""
         return self._process_profit_loss_report(report_data)
     
-    def _process_expenses_report(self, report_data: dict[str, any]) -> dict[str, any]:
+    def _process_expenses_report(self, report_data: dict[str, Any]) -> dict[str, Any]:
         """Process expenses by vendor report data."""
         return self._process_profit_loss_report(report_data)
     

@@ -91,11 +91,26 @@ Next, you send a POST request to another endpoint that allows you to exchange th
 
 The first thing you must do is visit the QuickBooks authorization page:
 
-`app.get('/auth', (req: Request, res: Response) => {
-const redirectUri = encodeURIComponent(process.env.REDIRECT_URI!);
-const authUrl = `https://appcenter.intuit.com/connect/oauth2?client_id=${process.env.CLIENT_ID}&response_type=code&scope=com.intuit.quickbooks.accounting&redirect_uri=${redirectUri}&state=demo-app`;
-res.redirect(authUrl);
-});`
+```python
+from flask import Flask, redirect, request, jsonify
+import os
+import requests
+import base64
+from urllib.parse import quote_plus
+
+app = Flask(__name__)
+
+# Global variables to store tokens (for demonstration purposes)
+accessToken = None
+refreshToken = None
+BASE_URL = None
+
+@app.route('/auth')
+def auth():
+    redirect_uri = quote_plus(os.environ.get('REDIRECT_URI'))
+    auth_url = f"https://appcenter.intuit.com/connect/oauth2?client_id={os.environ.get('CLIENT_ID')}&response_type=code&scope=com.intuit.quickbooks.accounting&redirect_uri={redirect_uri}&state=demo-app"
+    return redirect(auth_url)
+```
 
 Here, you retrieve the redirect URI from the environment variables and encode it to ensure it's correctly formatted. Next, the `authUrl` is constructed with crucial data, such as the `client_id`, `client_secret`, `response_type`, and `state`, encoded as URL query parameters.
 
@@ -113,67 +128,85 @@ Finally, you're instructing the browser to redirect you to the constructed `auth
 
 The following code handles the callback, retrieves the authorization code, and exchanges it for the access and refresh tokens:
 
-`# app.ts
-app.get('/callback', async (req: Request, res: Response) => {
-const authCode = req.query.code as string;
-const realmId = req.query.realmId as string;
-BASE_URL = `https://sandbox-quickbooks.api.intuit.com/v3/company/${realmId}`;
-if (!authCode) {
-return res.status(400).send('No authorization code received');
-}
-const requestBody = new URLSearchParams({
-grant_type: 'authorization_code',
-code: authCode,
-redirect_uri: process.env.REDIRECT_URI!,
-}).toString();
-const response = await axios.post(
-'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
-requestBody,
-{
-headers: {
-'Accept': 'application/json',
-'Authorization': `Basic ${Buffer.from(`${process.env.CLIENT_ID}:${process.env.CLIENT_SECRET}`).toString('base64')}`,
-'Content-Type': 'application/x-www-form-urlencoded'
-}
-}
-);
-accessToken = response.data.access_token;
-refreshToken = response.data.refresh_token;
-res.json({ accessToken, refreshToken });
-console.log(accessToken, refreshToken);
-});`
+```python
+@app.route('/callback')
+def callback():
+    global accessToken, refreshToken, BASE_URL
+    auth_code = request.args.get('code')
+    realm_id = request.args.get('realmId')
+
+    BASE_URL = f"https://sandbox-quickbooks.api.intuit.com/v3/company/{realm_id}"
+
+    if not auth_code:
+        return jsonify({'error': 'No authorization code received'}), 400
+
+    client_id = os.environ.get('CLIENT_ID')
+    client_secret = os.environ.get('CLIENT_SECRET')
+    redirect_uri = os.environ.get('REDIRECT_URI')
+
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Basic ' + base64.b64encode(f"{client_id}:{client_secret}".encode()).decode(),
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    data = {
+        'grant_type': 'authorization_code',
+        'code': auth_code,
+        'redirect_uri': redirect_uri
+    }
+
+    try:
+        response = requests.post('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', headers=headers, data=data)
+        response.raise_for_status() # Raise an exception for HTTP errors
+        token_data = response.json()
+        accessToken = token_data['access_token']
+        refreshToken = token_data['refresh_token']
+        print(f"Access Token: {accessToken}, Refresh Token: {refreshToken}")
+        return jsonify({'accessToken': accessToken, 'refreshToken': refreshToken})
+    except requests.exceptions.RequestException as e:
+        return jsonify({'error': str(e)}), 500
+```
 
 Here, you're making a POST request to the endpoint, passing in the body object and the headers. The `try-catch` block assists with error handling and fixing any possible issues. Similarly, you can implement the refresh token logic to refresh the access code every sixty minutes:
 
 `try-catch`
-`async function refreshAccessToken() {
-if (!refreshToken) {
-console.error('No refresh token available to refresh access token');
-return;
-}
-const requestBody = new URLSearchParams({
-grant_type: 'refresh_token',
-refresh_token: refreshToken,
-}).toString();
-const response = await axios.post(
-'https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer',
-requestBody,
-{
-headers: {
-'Accept': 'application/json',
-'Authorization': `Basic ${Buffer.from(`${process.env.CLIENT_ID}:${process.env.CLIENT_SECRET}`).toString('base64')}`,
-'Content-Type': 'application/x-www-form-urlencoded'
-}
-}
-);
-// Store the new access and refresh tokens
-accessToken = response.data.access_token;
-refreshToken = response.data.refresh_token;
-console.log('Access token refreshed:', accessToken);
-console.log('Refresh token:', refreshToken);
-// Here, store the new tokens in your database or persistent storage if needed
-}
-setInterval(refreshAccessToken, 3600000);`
+```python
+def refresh_access_token():
+    global accessToken, refreshToken
+    if not refreshToken:
+        print('No refresh token available to refresh access token')
+        return
+
+    client_id = os.environ.get('CLIENT_ID')
+    client_secret = os.environ.get('CLIENT_SECRET')
+
+    headers = {
+        'Accept': 'application/json',
+        'Authorization': 'Basic ' + base64.b64encode(f"{client_id}:{client_secret}".encode()).decode(),
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+    data = {
+        'grant_type': 'refresh_token',
+        'refresh_token': refreshToken
+    }
+
+    try:
+        response = requests.post('https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer', headers=headers, data=data)
+        response.raise_for_status()
+        token_data = response.json()
+        accessToken = token_data['access_token']
+        refreshToken = token_data['refresh_token']
+        print(f"Access token refreshed: {accessToken}")
+        print(f"Refresh token: {refreshToken}")
+        # Here, store the new tokens in your database or persistent storage if needed
+    except requests.exceptions.RequestException as e:
+        print(f"Error refreshing token: {e}")
+
+# In a real application, you would use a scheduler like APScheduler or a background task
+# to call refresh_access_token periodically. For a simple Flask app, this might be
+# handled differently or as part of a long-running process.
+# For demonstration, we'll just define the function.
+```
 
 In this code snippet, you're first checking if a refresh token exists. Then, you're sending a request to the same endpoint as the callback logic with the only difference being that this time, `grant_type` is now `refresh_token` instead of `authorization_code`, as seen in the previous code block.
 
@@ -195,69 +228,81 @@ Accounts refer to categories that can track a business's money in and money out.
 
 To create an account, you send a POST request, as follows:
 
-`# app.ts
-const accountData = {
-"Name": "Test_Account",
-"AccountType": "Accounts Receivable"
-};
-const response = await axios.post(
-`${BASE_URL}/account`,
-accountData,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of creating an account
+# In a real Flask app, this would be an endpoint
+# @app.route('/create-account', methods=['POST'])
+# def create_account():
+account_data = {
+    "Name": "Test_Account",
+    "AccountType": "Accounts Receivable"
 }
-);
-res.status(201).json(response.data);`
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+}
+try:
+    response = requests.post(f"{BASE_URL}/account", json=account_data, headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 201
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error creating account: {e}")
+```
 
 ### Create, Get, and Update Invoices
 
 To create an invoice using the QuickBooks Online Accounting API, you set up an endpoint called `/create-invoice` and send a POST request with the required invoice data. Here's how that works:
 
 `/create-invoice`
-`const invoiceData = {
-"CustomerRef": {
-"value": "1" // Replace with the appropriate customer ID
-},
-"Line": [
-{
-"Amount": 100.00,
-"DetailType": "SalesItemLineDetail",
-"SalesItemLineDetail": {
-"ItemRef": {
-"value": "1", // Replace with the appropriate item ID
-"name": "Item Name"
-},
-"UnitPrice": 100.00,
-"Qty": 1
+```python
+# Example of creating an invoice
+# @app.route('/create-invoice', methods=['POST'])
+# def create_invoice():
+invoice_data = {
+    "CustomerRef": {
+        "value": "1" # Replace with the appropriate customer ID
+    },
+    "Line": [
+        {
+            "Amount": 100.00,
+            "DetailType": "SalesItemLineDetail",
+            "SalesItemLineDetail": {
+                "ItemRef": {
+                    "value": "1", # Replace with the appropriate item ID
+                    "name": "Item Name"
+                },
+                "UnitPrice": 100.00,
+                "Qty": 1
+            }
+        }
+    ],
+    "BillAddr": {
+        "Line1": "123 Main St",
+        "City": "Anytown",
+        "CountrySubDivisionCode": "CA",
+        "PostalCode": "12345"
+    },
+    "CurrencyRef": {
+        "value": "USD"
+    }
 }
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
 }
-],
-"BillAddr": {
-"Line1": "123 Main St",
-"City": "Anytown",
-"CountrySubDivisionCode": "CA",
-"PostalCode": "12345"
-},
-"CurrencyRef": {
-"value": "USD"
-}
-};
-const response = await axios.post(
-`${BASE_URL}/invoice`,
-invoiceData,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
-}
-);
-res.status(201).json(response.data);`
+try:
+    response = requests.post(f"{BASE_URL}/invoice", json=invoice_data, headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 201
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error creating invoice: {e}")
+```
 
 In this code snippet, you define the data for the invoice in the `invoiceData` object, consisting of the following components:
 
@@ -292,17 +337,24 @@ In this code snippet, you define the data for the invoice in the `invoiceData` o
 To read or retrieve a specific invoice, you send a GET request to the URL specified with the invoice ID: `BASE_URL/invoice/invoice_id`. Here's an example of how that might look:
 
 `BASE_URL/invoice/invoice_id`
- `const { invoiceId } = req.params; // Get invoice ID from request parameters
-const response = await axios.get(
-`${BASE_URL}/invoice/${invoiceId}`,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of getting an invoice
+# @app.route('/invoice/<string:invoice_id>', methods=['GET'])
+# def get_invoice(invoice_id):
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
 }
-);`
+try:
+    response = requests.get(f"{BASE_URL}/invoice/{invoice_id}", headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 200
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error getting invoice: {e}")
+```
 
 Upon a successful request, you receive the invoice details in JSON format, including all information about the customer, line items, and billing address.
 
@@ -315,77 +367,116 @@ You need to include the invoice's `Id` and `SyncToken` in the request. Here's ho
 
 `Id`
 `SyncToken`
-`const invoiceData = {
-"Id": "145", // Replace with the invoice ID you want to update
-"SyncToken": "0", // Must be the current SyncToken for the invoice
-"Line": [
-{
-"Amount": 150.00,
-"DetailType": "SalesItemLineDetail",
-"SalesItemLineDetail": {
-"ItemRef": {
-"value": "1", // ID of the item
-"name": "Updated Item Name" // Optional updated item name
-},
-"UnitPrice": 150.00,
-"Qty": 1
+```python
+# Example of updating an invoice
+# @app.route('/update-invoice', methods=['POST'])
+# def update_invoice():
+invoice_data = {
+    "Id": "145", # Replace with the invoice ID you want to update
+    "SyncToken": "0", # Must be the current SyncToken for the invoice
+    "Line": [
+        {
+            "Amount": 150.00,
+            "DetailType": "SalesItemLineDetail",
+            "SalesItemLineDetail": {
+                "ItemRef": {
+                    "value": "1", # ID of the item
+                    "name": "Updated Item Name" # Optional updated item name
+                },
+                "UnitPrice": 150.00,
+                "Qty": 1
+            }
+        }
+    ]
 }
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
 }
-]
-};
-const response = await axios.post(
-`${BASE_URL}/invoice`,
-invoiceData,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
-}
-);
-res.status(200).json(response.data);`
+try:
+    response = requests.post(f"{BASE_URL}/invoice", json=invoice_data, headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 200
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error updating invoice: {e}")
+```
 
 In return, you get this object:
 
-`{"Account":{"Name":"Test_Account_Updated","SubAccount":false,"FullyQualifiedName":"Test_Account_Updated","Active":true,"Classification":"Asset","AccountType":"Accounts Receivable","AccountSubType":"AccountsReceivable","CurrentBalance":0,"CurrentBalanceWithSubAccounts":0,"CurrencyRef":{"value":"USD","name":"United States Dollar"},"domain":"QBO","sparse":false,"Id":"91","SyncToken":"1","MetaData":{"CreateTime":"2024-08-12T09:37:38-07:00","LastUpdatedTime":"2024-08-12T11:17:56-07:00"}},"time":"2024-08-12T11:17:56.425-07:00"}`
+```json
+{
+  "Account": {
+    "Name": "Test_Account_Updated",
+    "SubAccount": false,
+    "FullyQualifiedName": "Test_Account_Updated",
+    "Active": true,
+    "Classification": "Asset",
+    "AccountType": "Accounts Receivable",
+    "AccountSubType": "AccountsReceivable",
+    "CurrentBalance": 0,
+    "CurrentBalanceWithSubAccounts": 0,
+    "CurrencyRef": {
+      "value": "USD",
+      "name": "United States Dollar"
+    },
+    "domain": "QBO",
+    "sparse": false,
+    "Id": "91",
+    "SyncToken": "1",
+    "MetaData": {
+      "CreateTime": "2024-08-12T09:37:38-07:00",
+      "LastUpdatedTime": "2024-08-12T11:17:56-07:00"
+    }
+  },
+  "time": "2024-08-12T11:17:56.425-07:00"
+}
+```
 
 ### Create, Get, and Update Bills
 
 To create a bill, set up an endpoint called `/create-bill` and send a POST request with the required bill data. Here's how that works:
 
 `/create-bill`
-`const billData = {
-"VendorRef": {
-"value": "56"
-},
-"Line": [
-{
-"Amount": 100.00,
-"DetailType": "AccountBasedExpenseLineDetail",
-"AccountBasedExpenseLineDetail": {
-"AccountRef": {
-"value": "7",
+```python
+# Example of creating a bill
+# @app.route('/create-bill', methods=['POST'])
+# def create_bill():
+bill_data = {
+    "VendorRef": {
+        "value": "56"
+    },
+    "Line": [
+        {
+            "Amount": 100.00,
+            "DetailType": "AccountBasedExpenseLineDetail",
+            "AccountBasedExpenseLineDetail": {
+                "AccountRef": {
+                    "value": "7",
+                }
+            }
+        }
+    ],
+    "CurrencyRef": {
+        "value": "USD"
+    }
 }
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
 }
-}
-],
-"CurrencyRef": {
-"value": "USD"
-}
-};
-const response = await axios.post(
-`${BASE_URL}/bill`,
-billData,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
-}
-);
-res.status(201).json(response.data);`
+try:
+    response = requests.post(f"{BASE_URL}/bill", json=bill_data, headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 201
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error creating bill: {e}")
+```
 
 In this code snippet, you define the data for the bill in the `billData` object, which includes these components:
 
@@ -417,16 +508,24 @@ In this code snippet, you define the data for the bill in the `billData` object,
 To read or retrieve a specific bill, you send a GET request to the URL specified with the bill ID: `BASE_URL/bill/bill_id`. Here's an example of how that might look:
 
 `BASE_URL/bill/bill_id`
-`const response = await axios.get(
-`${BASE_URL}/bill/1`, // Replace 1 with the actual bill ID
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of getting a bill
+# @app.route('/bill/<string:bill_id>', methods=['GET'])
+# def get_bill(bill_id):
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
 }
-);`
+try:
+    response = requests.get(f"{BASE_URL}/bill/{bill_id}", headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 200
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error getting bill: {e}")
+```
 
 To update an existing bill, you send a POST request to the URL `${BASE_URL}/bill` with a JSON object containing the updates. Remember to include the bill's `Id` and `SyncToken` in the request.
 
@@ -440,25 +539,31 @@ Also, since it's a full update, any fields not included in the request are chang
 
 Here's how you can structure the update:
 
-`const billData = {
-"Id": "146", // Replace with the bill ID you want to update
-"SyncToken": "0",
-"DueDate": "2024-08-12",
-"TotalAmt": 150,
-// Other fields as necessary
-};
-const response = await axios.post(
-`${BASE_URL}/bill`,
-billData,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of updating a bill
+# @app.route('/update-bill', methods=['POST'])
+# def update_bill():
+bill_data = {
+    "Id": "146", # Replace with the bill ID you want to update
+    "SyncToken": "0",
+    "DueDate": "2024-08-12",
+    "TotalAmt": 150,
+    # Other fields as necessary
 }
-);
-res.status(200).json(response.data);`
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+}
+try:
+    response = requests.post(f"{BASE_URL}/bill", json=bill_data, headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 200
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error updating bill: {e}")
+```
 
 ### Create, Get, and Update Payments
 
@@ -471,38 +576,44 @@ QuickBooks has specific features and requirements for payments, which include th
 To create a payment, set up an endpoint called `/create-payment` that sends a POST request with the required payment data:
 
 `/create-payment`
-`const paymentData = {
-"CustomerRef": {
-"value": "1" // Replace with the appropriate customer ID
-},
-"TotalAmt": 100,
-"Line": [
-{
-"Amount": 100.00, // Total payment amount for this line
-"LinkedTxn": [
-{
-"TxnId": "1", // Replace with the ID of the invoice being paid
-"TxnType": "Invoice" // The type of transaction
+```python
+# Example of creating a payment
+# @app.route('/create-payment', methods=['POST'])
+# def create_payment():
+payment_data = {
+    "CustomerRef": {
+        "value": "1" # Replace with the appropriate customer ID
+    },
+    "TotalAmt": 100,
+    "Line": [
+        {
+            "Amount": 100.00, # Total payment amount for this line
+            "LinkedTxn": [
+                {
+                    "TxnId": "1", # Replace with the ID of the invoice being paid
+                    "TxnType": "Invoice" # The type of transaction
+                }
+            ]
+        }
+    ],
+    "CurrencyRef": {
+        "value": "USD" # Currency code for the payment
+    }
 }
-]
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
 }
-],
-"CurrencyRef": {
-"value": "USD" // Currency code for the payment
-}
-};
-const response = await axios.post(
-`${BASE_URL}/payment`,
-paymentData,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
-}
-);
-res.status(201).json(response.data);`
+try:
+    response = requests.post(f"{BASE_URL}/payment", json=payment_data, headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 201
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error creating payment: {e}")
+```
 
 The code snippet includes the following fields:
 
@@ -529,18 +640,24 @@ The code snippet includes the following fields:
 To read or retrieve a specific payment, send a GET request to the URL specified with the payment ID `BASE_URL/payment/payment_id`:
 
 `BASE_URL/payment/payment_id`
-`const { paymentId } = req.params; // Get payment ID from request parameters
-const response = await axios.get(
-`${BASE_URL}/payment/${paymentId}`,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of getting a payment
+# @app.route('/payment/<string:payment_id>', methods=['GET'])
+# def get_payment(payment_id):
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
 }
-);
-res.status(200).json(response.data);`
+try:
+    response = requests.get(f"{BASE_URL}/payment/{payment_id}", headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 200
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error getting payment: {e}")
+```
 
 This code gets the payment ID from the request parameters and retrieves the payment details in JSON format.
 
@@ -555,28 +672,34 @@ To update an existing payment, send a POST request to the `${BASE_URL}/payment` 
 Transfers represent the movement of money between bank accounts. To create a transfer, set up an endpoint called `/create-transfer` and send a POST request with the required transfer data:
 
 `/create-transfer`
-`const transferData = {
-"FromAccountRef": {
-"value": "1" // Replace with the source account ID
-},
-"ToAccountRef": {
-"value": "2" // Replace with the destination account ID
-},
-"Amount": 100.00, // Amount to be transferred
-"TxnDate": "2024-01-01" // Date of the transfer
-};
-const response = await axios.post(
-`${BASE_URL}/transfer`,
-transferData,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of creating a transfer
+# @app.route('/create-transfer', methods=['POST'])
+# def create_transfer():
+transfer_data = {
+    "FromAccountRef": {
+        "value": "1" # Replace with the source account ID
+    },
+    "ToAccountRef": {
+        "value": "2" # Replace with the destination account ID
+    },
+    "Amount": 100.00, # Amount to be transferred
+    "TxnDate": "2024-01-01" # Date of the transfer
 }
-);
-res.status(201).json(response.data);`
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+}
+try:
+    response = requests.post(f"{BASE_URL}/transfer", json=transfer_data, headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 201
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error creating transfer: {e}")
+```
 
 Here are the important attributes of the JSON object in this code snippet:
 
@@ -590,18 +713,24 @@ Here are the important attributes of the JSON object in this code snippet:
 To read or retrieve a specific transfer, send a GET request to the URL specified with the transfer ID `BASE_URL/transfer/transfer_id`:
 
 `BASE_URL/transfer/transfer_id`
-`const { transferId } = req.params; // Get transfer ID from request parameters
-const response = await axios.get(
-`${BASE_URL}/transfer/${transferId}`,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of getting a transfer
+# @app.route('/transfer/<string:transfer_id>', methods=['GET'])
+# def get_transfer(transfer_id):
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
 }
-);
-res.status(200).json(response.data);`
+try:
+    response = requests.get(f"{BASE_URL}/transfer/{transfer_id}", headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 200
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error getting transfer: {e}")
+```
 
 This code retrieves the transfer details using the transfer ID provided in the request parameters.
 
@@ -613,30 +742,36 @@ To update an existing transfer, send a POST request to the `${BASE_URL}/transfer
 
 Here's how you could structure the update:
 
-`const transferData = {
-"Id": "145", // Replace with the transfer ID you want to update
-"SyncToken": "0", // Must be the current SyncToken for the transfer
-"Amount": 150.00, // Updated transfer amount
-"FromAccountRef": {
-"value": "1" // Source account ID
-},
-"ToAccountRef": {
-"value": "2" // Destination account ID
-},
-sparse: true
-};
-const response = await axios.post(
-`${BASE_URL}/transfer`,
-transferData,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of updating a transfer
+# @app.route('/update-transfer', methods=['POST'])
+# def update_transfer():
+transfer_data = {
+    "Id": "145", # Replace with the transfer ID you want to update
+    "SyncToken": "0", # Must be the current SyncToken for the transfer
+    "Amount": 150.00, # Updated transfer amount
+    "FromAccountRef": {
+        "value": "1" # Source account ID
+    },
+    "ToAccountRef": {
+        "value": "2" # Destination account ID
+    },
+    "sparse": True
 }
-);
-res.status(200).json(response.data);`
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+}
+try:
+    response = requests.post(f"{BASE_URL}/transfer", json=transfer_data, headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 200
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error updating transfer: {e}")
+```
 
 ### Create, Get, and Update Vendors
 
@@ -650,53 +785,65 @@ The QuickBooks Online Accounting API has some specific rules for setting up vend
 To create a vendor, set up an endpoint called `/create-vendor` and send a POST request with the required vendor data:
 
 `/create-vendor`
-`const vendorData = {
-"DisplayName": "Vendor Name", // Required: Name of the vendor
-"PrimaryEmailAddr": {
-"Address": "vendor@example.com" // Vendor's email address
-},
-"PrimaryPhone": {
-"FreeFormNumber": "(123) 456-7890" // Vendor's phone number
-},
-"BillAddr": { // Optional billing address details
-"Line1": "123 Vendor St",
-"City": "Vendor City",
-"CountrySubDivisionCode": "CA", // State abbreviation
-"PostalCode": "12345" // Postal code
-},
-"Suffix": "Sr.",
-"Title": "Mr.",
-"GivenName": "Example 1",
-"PrintOnCheckName": "Example Vendor Name"
-};
-const response = await axios.post(
-`${BASE_URL}/vendor`,
-vendorData,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of creating a vendor
+# @app.route('/create-vendor', methods=['POST'])
+# def create_vendor():
+vendor_data = {
+    "DisplayName": "Vendor Name", # Required: Name of the vendor
+    "PrimaryEmailAddr": {
+        "Address": "vendor@example.com" # Vendor's email address
+    },
+    "PrimaryPhone": {
+        "FreeFormNumber": "(123) 456-7890" # Vendor's phone number
+    },
+    "BillAddr": { # Optional billing address details
+        "Line1": "123 Vendor St",
+        "City": "Vendor City",
+        "CountrySubDivisionCode": "CA", # State abbreviation
+        "PostalCode": "12345" # Postal code
+    },
+    "Suffix": "Sr.",
+    "Title": "Mr.",
+    "GivenName": "Example 1",
+    "PrintOnCheckName": "Example Vendor Name"
 }
-);
-res.status(201).json(response.data);`
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+}
+try:
+    response = requests.post(f"{BASE_URL}/vendor", json=vendor_data, headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 201
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error creating vendor: {e}")
+```
 
 To read or retrieve a specific vendor, send a GET request to the URL specified with the vendor ID `BASE_URL/vendor/vendor_id`:
 
 `BASE_URL/vendor/vendor_id`
-`const { vendorId } = req.params; // Get vendor ID from request parameters
-const response = await axios.get(
-`${BASE_URL}/vendor/${vendorId}`,
-{
-headers: {
-'Authorization': `Bearer ${accessToken}`,
-'Content-Type': 'application/json',
-'Accept': 'application/json',
-},
+```python
+# Example of getting a vendor
+# @app.route('/vendor/<string:vendor_id>', methods=['GET'])
+# def get_vendor(vendor_id):
+headers = {
+    'Authorization': f'Bearer {accessToken}',
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
 }
-);
-res.status(200).json(response.data);`
+try:
+    response = requests.get(f"{BASE_URL}/vendor/{vendor_id}", headers=headers)
+    response.raise_for_status()
+    # return jsonify(response.json()), 200
+    print(response.json())
+except requests.exceptions.RequestException as e:
+    # return jsonify({'error': str(e)}), 500
+    print(f"Error getting vendor: {e}")
+```
 
 This code retrieves the vendor details using the vendor ID provided in the request parameters.
 

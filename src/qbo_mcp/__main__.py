@@ -42,12 +42,13 @@ def main():
         if config_errors:
             for error in config_errors:
                 logger.error(f"❌ {error}")
+            raise ValueError("Could not start: {config_errors. }")
         else:
             logger.info("✅ Config OK")
         
-        # Run the server
-        logger.info("💸 Starting QuickBooks Online MCP Server")
-        mcp.run()
+            # Run the server
+            logger.info("💸 Starting QuickBooks Online MCP Server")
+            mcp.run()
 
 if __name__ == "__main__":
     main()

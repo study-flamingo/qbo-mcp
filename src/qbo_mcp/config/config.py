@@ -7,12 +7,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 logger = logging.getLogger()
+logger.setLevel(logging.DEBUG)
 
 # Load environment variables from .env file
-if not load_dotenv():
-    logger.warning(".env file not found in project root!")
+env_path = Path(__file__).parent.parent.parent.parent / ".env"
+if not load_dotenv(env_path):
+    print(".env file not found in project root!")
 else:
-    logger.info(".env file loaded")
+    print(f"🌐 .env file loaded from {env_path}")
 
 if not os.getenv("QBO_CLIENT_ID") or not os.getenv("QBO_CLIENT_SECRET"):
     raise ValueError("QBO_CLIENT_ID and QBO_CLIENT_SECRET must be set in the environment variables!")
@@ -33,8 +35,11 @@ class QBOConfig():
         )
         
         # Token storage
-        self.token_file: Path = Path(os.getenv("QBO_TOKEN_FILE", "qbo_tokens.json"))
-        
+        self.token_file: Path = Path(os.getenv("QBO_TOKEN_FILE", "qbo_tokens.json")).resolve()
+        if not self.token_file.exists():
+            self.token_file.touch()
+            print(f"🪙 Created new token file at {self.token_file}")
+            
         # Base URLs
         self.sandbox_base_url: str = "https://sandbox-quickbooks.api.intuit.com"
         self.production_base_url: str = "https://quickbooks.api.intuit.com"
@@ -66,4 +71,7 @@ class QBOConfig():
 # Global configuration instance
 config = QBOConfig()
 
-__all__ = ["config"]
+__all__ = [
+    "config",
+    "QBOConfig",
+]

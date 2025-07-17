@@ -110,7 +110,7 @@ def _ensure_authenticated_and_handle_errors():
     except Exception as e:
         raise ValueError(f"Auth check error: {str(e)}")
     finally:
-        print("Auth check successful")
+        logger.info("🔐  Auth check successful")
 
 
 def _generate_profit_loss_report(start_date: str | None, end_date: str | None, summarize_by: str = "Month") -> dict[str, Any]:

@@ -1,10 +1,12 @@
 """Configuration settings for QBO MCP server."""
 
+from dataclasses import dataclass
 import logging
 import os
 from pathlib import Path
 
 from dotenv import load_dotenv
+from intuitlib.enums import Scopes
 
 logger = logging.getLogger()
 logger.setLevel(logging.DEBUG)
@@ -12,13 +14,17 @@ logger.setLevel(logging.DEBUG)
 # Load environment variables from .env file
 env_path = Path(__file__).parent.parent.parent.parent / ".env"
 if not load_dotenv(env_path):
-    print(".env file not found in project root!")
+    logger.warning(".env file not found in project root!")
 else:
-    print(f"🌐 .env file loaded from {env_path}")
+    logger.info(f"🌐 .env file loaded from {env_path}")
 
 if not os.getenv("QBO_CLIENT_ID") or not os.getenv("QBO_CLIENT_SECRET"):
     raise ValueError("QBO_CLIENT_ID and QBO_CLIENT_SECRET must be set in the environment variables!")
 
+
+QBO_SCOPES = [Scopes.ACCOUNTING]
+
+@dataclass
 class QBOConfig():
     """Configuration class for QuickBooks Online integration."""
     
@@ -27,18 +33,14 @@ class QBOConfig():
         self.client_id: str = os.getenv("QBO_CLIENT_ID", "")
         self.client_secret: str = os.getenv("QBO_CLIENT_SECRET", "")
         self.redirect_uri: str = os.getenv("QBO_REDIRECT_URI", "http://localhost:8000/callback")
-        self.scope: str = os.getenv("QBO_SCOPE", "com.intuit.quickbooks.accounting")
+        self.scopes: list[Scopes] = QBO_SCOPES
         self.environment: str = os.getenv("QBO_ENVIRONMENT", "sandbox")  # sandbox or production
-        self.discovery_document_url: str = os.getenv(
-            "QBO_DISCOVERY_DOCUMENT_URL",
-            "https://developer.intuit.com/.well-known/openid_sandbox_configuration/"
-        )
         
         # Token storage
         self.token_file: Path = Path(os.getenv("QBO_TOKEN_FILE", "qbo_tokens.json")).resolve()
         if not self.token_file.exists():
             self.token_file.touch()
-            print(f"🪙 Created new token file at {self.token_file}")
+            logger.info(f"🪙  Created new token file at {self.token_file}")
             
         # Base URLs
         self.sandbox_base_url: str = "https://sandbox-quickbooks.api.intuit.com"

@@ -12,6 +12,12 @@ dependencies = [
     "python-quickbooks>=0.9.12",
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest>=8.2.2",
+    "pytest-asyncio>=0.23.7"
+]
+
 [tool.uv]
 package = true
 

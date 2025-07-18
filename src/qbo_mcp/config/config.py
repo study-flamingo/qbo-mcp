@@ -16,7 +16,7 @@ env_path = Path(__file__).parent.parent.parent.parent / ".env"
 if not load_dotenv(env_path):
     logger.warning(".env file not found in project root!")
 else:
-    logger.info(f"🌐 .env file loaded from {env_path}")
+    logger.info(f"🌐  .env file loaded from {env_path}")
 
 if not os.getenv("QBO_CLIENT_ID") or not os.getenv("QBO_CLIENT_SECRET"):
     raise ValueError("QBO_CLIENT_ID and QBO_CLIENT_SECRET must be set in the environment variables!")
@@ -24,7 +24,6 @@ if not os.getenv("QBO_CLIENT_ID") or not os.getenv("QBO_CLIENT_SECRET"):
 
 QBO_SCOPES = [Scopes.ACCOUNTING]
 
-@dataclass
 class QBOConfig():
     """Configuration class for QuickBooks Online integration."""
     

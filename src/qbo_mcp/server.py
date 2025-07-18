@@ -1,6 +1,7 @@
 """QuickBooks Online MCP Server with automatic authentication."""
 
 import logging
+import re
 from fastmcp import FastMCP
 
 from .config import *

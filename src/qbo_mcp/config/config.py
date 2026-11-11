@@ -35,7 +35,9 @@ class QBOConfig():
         self.environment: str = os.getenv("QBO_ENVIRONMENT", "sandbox")  # sandbox or production
         
         # Token storage
-        self.token_file: Path = Path(os.getenv("QBO_TOKEN_FILE", "qbo_tokens.json")).resolve()
+        # Treat an empty QBO_TOKEN_FILE (common in .env templates) as unset;
+        # otherwise Path("") resolves to the CWD and breaks token persistence.
+        self.token_file: Path = Path(os.getenv("QBO_TOKEN_FILE") or "qbo_tokens.json").resolve()
         if not self.token_file.exists():
             self.token_file.touch()
             logger.info(f"🪙  Created new token file at {self.token_file}")

@@ -59,3 +59,6 @@ ignore = [
     "F403",  # 'from module import *' used; unable to detect undefined
     "F405",  # name may be undefined, or defined from star imports
 ]
+
+[tool.pytest.ini_options]
+asyncio_default_fixture_loop_scope = "function"

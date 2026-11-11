@@ -115,13 +115,19 @@ def _ensure_authenticated_and_handle_errors():
 
 def _generate_profit_loss_report(start_date: str | None, end_date: str | None, summarize_by: str = "Month") -> dict[str, Any]:
     _ensure_authenticated_and_handle_errors()
+    period = create_report_period(start_date, end_date)
+    # Validate the resolved dates: omitting start/end is documented as
+    # "defaults to current month", so validating raw None values would fail
+    # the schema type check before defaults are applied.
     input_dict = {
-        "period": {"start_date": start_date, "end_date": end_date},
-        "summarize_by": summarize_by
+        "period": {
+            "start_date": period.start_date.isoformat(),
+            "end_date": period.end_date.isoformat(),
+        },
+        "summarize_by": summarize_by,
     }
     validate_json_schema(input_dict, PROFIT_LOSS_REQUEST_SCHEMA, name="ProfitLossRequest")
     try:
-        period = create_report_period(start_date, end_date)
         report = reports_generator.get_profit_and_loss(period, summarize_by)
     except Exception as e:
         raise ValueError(f"Error generating P&L report: {str(e)}")
@@ -138,12 +144,12 @@ def _generate_profit_loss_report(start_date: str | None, end_date: str | None, s
 
 def _generate_balance_sheet_report(as_of_date: str | None, summarize_by: str = "Month") -> dict[str, Any]:
     _ensure_authenticated_and_handle_errors()
+    as_of_date_dt = parse_date(as_of_date) if as_of_date else date.today()
     input_dict = {
-        "as_of_date": as_of_date,
-        "summarize_by": summarize_by
+        "as_of_date": as_of_date_dt.isoformat(),
+        "summarize_by": summarize_by,
     }
     validate_json_schema(input_dict, BALANCE_SHEET_REQUEST_SCHEMA, name="BalanceSheetRequest")
-    as_of_date_dt = parse_date(as_of_date) if as_of_date else date.today()
     report = reports_generator.get_balance_sheet(as_of_date_dt, summarize_by)
     return {
         "status": "success",
@@ -155,11 +161,14 @@ def _generate_balance_sheet_report(as_of_date: str | None, summarize_by: str = "
 
 def _generate_cash_flow_report(start_date: str | None, end_date: str | None) -> dict[str, Any]:
     _ensure_authenticated_and_handle_errors()
+    period = create_report_period(start_date, end_date)
     input_dict = {
-        "period": {"start_date": start_date, "end_date": end_date}
+        "period": {
+            "start_date": period.start_date.isoformat(),
+            "end_date": period.end_date.isoformat(),
+        }
     }
     validate_json_schema(input_dict, CASH_FLOW_REQUEST_SCHEMA, name="CashFlowRequest")
-    period = create_report_period(start_date, end_date)
     report = reports_generator.get_cash_flow(period)
     return {
         "status": "success",
@@ -174,9 +183,9 @@ def _generate_cash_flow_report(start_date: str | None, end_date: str | None) -> 
 
 def _generate_ar_aging_report(as_of_date: str | None) -> dict[str, Any]:
     _ensure_authenticated_and_handle_errors()
-    input_dict = {"as_of_date": as_of_date}
-    validate_json_schema(input_dict, AGING_REQUEST_SCHEMA, name="AgingRequest")
     as_of_date_dt = parse_date(as_of_date) if as_of_date else date.today()
+    input_dict = {"as_of_date": as_of_date_dt.isoformat()}
+    validate_json_schema(input_dict, AGING_REQUEST_SCHEMA, name="AgingRequest")
     report = reports_generator.get_accounts_receivable_aging(as_of_date_dt)
     return {
         "status": "success",
@@ -188,9 +197,9 @@ def _generate_ar_aging_report(as_of_date: str | None) -> dict[str, Any]:
 
 def _generate_ap_aging_report(as_of_date: str | None) -> dict[str, Any]:
     _ensure_authenticated_and_handle_errors()
-    input_dict = {"as_of_date": as_of_date}
-    validate_json_schema(input_dict, AGING_REQUEST_SCHEMA, name="AgingRequest")
     as_of_date_dt = parse_date(as_of_date) if as_of_date else date.today()
+    input_dict = {"as_of_date": as_of_date_dt.isoformat()}
+    validate_json_schema(input_dict, AGING_REQUEST_SCHEMA, name="AgingRequest")
     report = reports_generator.get_accounts_payable_aging(as_of_date_dt)
     return {
         "status": "success",
@@ -202,11 +211,14 @@ def _generate_ap_aging_report(as_of_date: str | None) -> dict[str, Any]:
 
 def _generate_sales_by_customer_report(start_date: str | None, end_date: str | None) -> dict[str, Any]:
     _ensure_authenticated_and_handle_errors()
+    period = create_report_period(start_date, end_date)
     input_dict = {
-        "period": {"start_date": start_date, "end_date": end_date}
+        "period": {
+            "start_date": period.start_date.isoformat(),
+            "end_date": period.end_date.isoformat(),
+        }
     }
     validate_json_schema(input_dict, SALES_CUSTOMER_REQUEST_SCHEMA, name="SalesCustomerRequest")
-    period = create_report_period(start_date, end_date)
     report = reports_generator.get_sales_by_customer(period)
     return {
         "status": "success",
@@ -221,11 +233,14 @@ def _generate_sales_by_customer_report(start_date: str | None, end_date: str | N
 
 def _generate_expenses_by_vendor_report(start_date: str | None, end_date: str | None) -> dict[str, Any]:
     _ensure_authenticated_and_handle_errors()
+    period = create_report_period(start_date, end_date)
     input_dict = {
-        "period": {"start_date": start_date, "end_date": end_date}
+        "period": {
+            "start_date": period.start_date.isoformat(),
+            "end_date": period.end_date.isoformat(),
+        }
     }
     validate_json_schema(input_dict, EXPENSES_VENDOR_REQUEST_SCHEMA, name="ExpensesVendorRequest")
-    period = create_report_period(start_date, end_date)
     report = reports_generator.get_expenses_by_vendor(period)
     return {
         "status": "success",

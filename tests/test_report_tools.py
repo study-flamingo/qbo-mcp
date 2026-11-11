@@ -11,7 +11,7 @@ from qbo_mcp.tools import (
     _generate_sales_by_customer_report,
     _generate_expenses_by_vendor_report,
 )
-from qbo_mcp.reports import ReportPeriod
+from qbo_mcp.reports import ReportPeriod, get_current_month_period
 
 @pytest.fixture
 def mock_dependencies():
@@ -195,4 +195,39 @@ def test_generate_expenses_by_vendor_report(mock_dependencies):
     assert result["data"] == {"report": "expenses_data"}
     assert result["company_info"] == {"CompanyName": "Test Inc."}
     assert result["period"]["start_date"] == start_date_str
-    assert result["period"]["end_date"] == end_date_str 
+    assert result["period"]["end_date"] == end_date_str
+
+
+def test_generate_profit_loss_report_defaults(mock_dependencies):
+    """Omitting dates must resolve to the current month (regression: used to raise)."""
+    _, mock_reports_generator, _ = mock_dependencies
+    mock_reports_generator.get_profit_and_loss.return_value = {"report": "data"}
+
+    result = _generate_profit_loss_report(None, None, "Month")
+
+    assert result["status"] == "success"
+    expected = get_current_month_period()
+    assert result["period"]["start_date"] == expected.start_date.isoformat()
+    assert result["period"]["end_date"] == expected.end_date.isoformat()
+
+
+def test_generate_balance_sheet_report_defaults(mock_dependencies):
+    """Omitting as_of_date must default to today."""
+    _, mock_reports_generator, _ = mock_dependencies
+    mock_reports_generator.get_balance_sheet.return_value = {"report": "bs"}
+
+    result = _generate_balance_sheet_report(None)
+
+    assert result["status"] == "success"
+    assert result["as_of_date"] == date.today().isoformat()
+
+
+def test_generate_ar_aging_report_defaults(mock_dependencies):
+    """Omitting as_of_date must default to today."""
+    _, mock_reports_generator, _ = mock_dependencies
+    mock_reports_generator.get_accounts_receivable_aging.return_value = {"report": "ar"}
+
+    result = _generate_ar_aging_report(None)
+
+    assert result["status"] == "success"
+    assert result["as_of_date"] == date.today().isoformat()

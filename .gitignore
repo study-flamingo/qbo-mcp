@@ -1,4 +1,14 @@
 *.code-workspace
+
+# QBO credentials / OAuth tokens — NEVER commit these.
+# Intuit access/refresh tokens grant full API access to the company file.
+qbo_tokens.json
+**/qbo_tokens.json
+*_tokens.json
+.env
+.env.*
+!.env.example
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

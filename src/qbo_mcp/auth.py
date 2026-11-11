@@ -1,59 +1,91 @@
-"""Minimal authentication wrapper using intuit-oauth package."""
+"""Minimal authentication wrapper using intuit-oauth package.
+
+Design notes
+------------
+* Construction is **side-effect free**: no network calls and no browser are
+  triggered until a token is actually needed. ``AuthClient`` performs a
+  discovery request in its constructor, so it is built lazily.
+* ``ensure_authenticated`` refreshes only when the stored access token is
+  missing or near expiry, instead of refreshing on every tool call.
+* The interactive OAuth flow is invoked lazily (first authenticated use), never
+  at import time.
+"""
 
 import json
 import logging
 import os
+import time
 from pathlib import Path
 from typing import Any
 
 from intuitlib.client import AuthClient
-from intuitlib.enums import Scopes
 from quickbooks import QuickBooks
 
 from qbo_mcp.config import QBOConfig, config
 from qbo_mcp.oauth_flow import run_interactive_oauth
 
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
+
+# Refresh this many seconds before the access token actually expires.
+_TOKEN_REFRESH_SKEW_SECONDS = 60
+
 
 class QBOService:
     """
     Manages QuickBooks Online (QBO) authentication, token management, and client creation.
 
-    This service wraps the intuit-oauth AuthClient and provides methods to ensure valid authentication,
-    handle token persistence, and return authenticated QuickBooks client instances for API access.
+    This service wraps the intuit-oauth AuthClient and provides methods to ensure valid
+    authentication, handle token persistence, and return authenticated QuickBooks client
+    instances for API access.
     """
-    
+
     def __init__(self, config: QBOConfig):
         """
         Initialize the QBOService with configuration and load any existing tokens.
+
+        No network I/O or interactive prompt happens here; the AuthClient is created
+        lazily on first use.
 
         Args:
             config (QBOConfig): Configuration object containing credentials and file paths.
         """
         self.config = config
         self.token_file = self.config.token_file
-        self.auth_client = AuthClient(
-            client_id=self.config.client_id,
-            client_secret=self.config.client_secret,
-            redirect_uri=self.config.redirect_uri,
-            environment=self.config.environment,
-        )
+        self._auth_client: AuthClient | None = None
+        self._tokens: dict[str, Any] = {}
         self._load_tokens()
-        self.qbo: QuickBooks
-        logger.info("QBOService initialized!")
+        self.qbo: QuickBooks | None = None
+        logger.info("QBOService initialized (lazy auth)!")
 
+    # -- lazy AuthClient -------------------------------------------------------
+    @property
+    def auth_client(self) -> AuthClient:
+        """Return the AuthClient, constructing it (and its discovery call) on demand."""
+        if self._auth_client is None:
+            ac = AuthClient(
+                client_id=self.config.client_id,
+                client_secret=self.config.client_secret,
+                redirect_uri=self.config.redirect_uri,
+                environment=self.config.environment,
+            )
+            ac.access_token = self._tokens.get("access_token")
+            ac.refresh_token = self._tokens.get("refresh_token")
+            ac.environment = self._tokens.get("environment", self.config.environment)
+            ac.realm_id = self._tokens.get("realm_id")
+            self._auth_client = ac
+        return self._auth_client
+
+    # -- token loading / persistence ------------------------------------------
     def _load_tokens(self) -> None:
         """
-        Load tokens from disk or environment variables and set them on the AuthClient.
+        Load tokens from disk or environment variables into memory.
 
-        Tries to load from the configured token file first. If not found, falls back to environment variables.
-        If both fail, assumes authentication has not been run and initiates a new auth session.
+        Does NOT start an interactive session if tokens are missing; the flow is
+        deferred until ``ensure_authenticated`` is called.
         """
-        tokens = {}
-        # 1. Try loading from token file
+        tokens: dict[str, Any] = {}
         try:
-            with open(self.token_file, 'r') as f:
+            with open(self.token_file, "r") as f:
                 tokens = json.load(f)
             logger.info(f"Loaded tokens from {self.token_file}")
         except FileNotFoundError:
@@ -61,99 +93,126 @@ class QBOService:
         except Exception as e:
             logger.warning(f"Error reading token file: {str(e)}")
 
-        # 2. If file failed, try environment
-        if not tokens.get('access_token'):
+        if not tokens.get("access_token"):
             env_tokens = {
                 "access_token": os.getenv("QBO_ACCESS_TOKEN"),
                 "refresh_token": os.getenv("QBO_REFRESH_TOKEN"),
-                "environment": os.getenv("QBO_ENVIRONMENT", "sandbox"),
+                "environment": os.getenv("QBO_ENVIRONMENT", self.config.environment),
                 "realm_id": os.getenv("QBO_REALM_ID"),
             }
             env_tokens = {k: v for k, v in env_tokens.items() if v is not None}
-            if env_tokens.get('access_token'):
+            if env_tokens.get("access_token"):
                 tokens = env_tokens
                 logger.info("Loaded tokens from environment variables.")
             else:
                 logger.warning("No tokens found in environment variables.")
 
-        # 3. If neither file nor env provided tokens, start new auth session
-        if not tokens.get('access_token'):
-            logger.warning("No tokens found in file or environment. Starting new authentication session.")
-            tokens = run_interactive_oauth(self.auth_client, self.config.scopes)
-            self._save_tokens(tokens)
-            logger.info("Successfully obtained and saved tokens from initial OAuth flow.")
+        self._tokens = tokens
+        if not tokens.get("access_token"):
+            logger.info("No tokens available yet; interactive auth will run on first use if needed.")
 
-        # Set tokens on auth_client
-        self.auth_client.access_token = tokens.get('access_token')
-        self.auth_client.refresh_token = tokens.get('refresh_token')
-        self.auth_client.environment = tokens.get('environment', 'sandbox')
-        self.auth_client.realm_id = tokens.get('realm_id')
+    def _store_expiry(self) -> None:
+        """Record the access-token expiry (epoch seconds) using the client's expires_in."""
+        expires_in = getattr(self._auth_client, "expires_in", None)
+        if expires_in:
+            self._tokens["expires_at"] = time.time() + float(expires_in)
 
-    def _save_tokens(self, tokens=None) -> None:
-        """
-        Persist the current AuthClient tokens to disk.
-
-        Saves the access token, refresh token, environment, and realm_id to the configured token file.
-        """
+    def _save_tokens(self, tokens: dict | None = None) -> None:
+        """Persist tokens to disk (0600) so the refresh token survives restarts."""
         try:
             if tokens is None:
-                tokens = {
-                    'access_token': self.auth_client.access_token,
-                    'refresh_token': self.auth_client.refresh_token,
-                    'environment': self.auth_client.environment,
-                    'realm_id': self.auth_client.realm_id,
-                }
+                ac = self._auth_client
+                tokens = dict(self._tokens)
+                if ac is not None:
+                    tokens.update(
+                        {
+                            "access_token": ac.access_token,
+                            "refresh_token": ac.refresh_token,
+                            "environment": ac.environment,
+                            "realm_id": ac.realm_id,
+                        }
+                    )
+            self._tokens = tokens
             self.token_file.parent.mkdir(parents=True, exist_ok=True)
-            with open(self.token_file, 'w') as f:
+            with open(self.token_file, "w") as f:
                 json.dump(tokens, f, indent=2)
+            try:
+                os.chmod(self.token_file, 0o600)
+            except OSError:
+                pass
             logger.info(f"💾  Saved tokens to {self.token_file}")
         except Exception as e:
             logger.error(f"Error saving tokens: {str(e)}")
 
-    def ensure_authenticated(self) -> bool:
+    # -- authentication --------------------------------------------------------
+    def ensure_authenticated(self, interactive: bool = True) -> bool:
         """
-        Ensure valid authentication by refreshing tokens if necessary.
+        Ensure a valid access token is available.
 
-        Attempts to refresh the access token using the refresh token. Saves new tokens to disk if successful.
-        Raises an error if no refresh token is available or if the refresh fails.
+        - If a non-expired access token is loaded, does nothing (no network call).
+        - Otherwise refreshes using the refresh token.
+        - If no tokens exist and ``interactive`` is True, runs the interactive OAuth flow.
 
         Returns:
-            bool: True if tokens were refreshed successfully.
+            bool: True if authentication is ready.
+        Raises:
+            ValueError: if authentication cannot be completed.
         """
-        if not self.auth_client:
-            raise ValueError("Auth client not initialized!")
-        if not self.auth_client.access_token or not self.auth_client.refresh_token:
-            raise ValueError("No valid access or refresh token found!")
-        try:
-            self.auth_client.refresh()
+        ac = self.auth_client
+
+        # Fast path: access token still valid.
+        expires_at = self._tokens.get("expires_at")
+        if ac.access_token and expires_at:
+            try:
+                if time.time() < float(expires_at) - _TOKEN_REFRESH_SKEW_SECONDS:
+                    return True
+            except (TypeError, ValueError):
+                pass
+
+        # Refresh with the refresh token.
+        if ac.access_token and ac.refresh_token:
+            try:
+                ac.refresh()
+                self._store_expiry()
+                self._save_tokens()
+                logger.info("Tokens refreshed successfully!")
+                return True
+            except Exception as e:
+                logger.error(f"Token refresh error: {str(e)}")
+
+        # No usable tokens: run interactive OAuth only if allowed.
+        if interactive:
+            logger.info("No valid tokens; starting interactive OAuth flow...")
+            tokens = run_interactive_oauth(ac, self.config.scopes)
+            ac.access_token = tokens.get("access_token")
+            ac.refresh_token = tokens.get("refresh_token")
+            ac.environment = tokens.get("environment", self.config.environment)
+            ac.realm_id = tokens.get("realm_id")
+            self._store_expiry()
             self._save_tokens()
-            logger.info("Tokens refreshed successfully!")
             return True
-        except Exception as e:
-            logger.error(f"Token refresh error: {str(e)}")
-            return False
+
+        raise ValueError("No valid access or refresh token found and interactive auth is disabled!")
 
     def get_authenticated_client(self) -> QuickBooks:
         """
         Return an authenticated QuickBooks client, ensuring valid tokens.
-
-        Calls ensure_authenticated() to refresh tokens if needed, then returns a QuickBooks client
-        configured with the current AuthClient and realm_id.
 
         Returns:
             QuickBooks: An authenticated QuickBooks client instance.
         Raises:
             ValueError: If authentication fails or required tokens are missing.
         """
-        if not (self.auth_client.access_token and self.auth_client.refresh_token and self.auth_client.realm_id):
-            raise ValueError("Missing required tokens or realm_id for QuickBooks client.")
         if not self.ensure_authenticated():
-            raise ValueError("Could not refresh tokens for QuickBooks client.")
+            raise ValueError("Could not authenticate for QuickBooks client.")
+        ac = self.auth_client
+        if not (ac.access_token and ac.refresh_token and ac.realm_id):
+            raise ValueError("Missing required tokens or realm_id for QuickBooks client.")
         try:
             self.qbo = QuickBooks(
-                auth_client=self.auth_client,
-                refresh_token=self.auth_client.refresh_token,
-                realm_id=self.auth_client.realm_id,
+                auth_client=ac,
+                refresh_token=ac.refresh_token,
+                realm_id=ac.realm_id,
             )
         except Exception as e:
             logger.error(f"QBO Service error: {str(e)}")
@@ -162,9 +221,7 @@ class QBOService:
 
     def revoke_tokens(self) -> bool:
         """
-        Revoke the current refresh token and clear persisted tokens and in-memory tokens.
-
-        Uses the AuthClient to revoke the refresh token, then deletes the token file if it exists.
+        Revoke the current refresh token and clear persisted/in-memory tokens.
 
         Returns:
             bool: True if tokens were revoked, False if no refresh token was present.
@@ -172,15 +229,16 @@ class QBOService:
             ValueError: If revocation fails.
         """
         try:
-            if self.auth_client.refresh_token:
-                self.auth_client.revoke()
+            ac = self.auth_client
+            if ac.refresh_token:
+                ac.revoke()
                 if self.token_file.exists():
                     self.token_file.unlink()
-                # Clear in-memory tokens
-                self.auth_client.access_token = None
-                self.auth_client.refresh_token = None
-                self.auth_client.realm_id = None
-                self.auth_client.environment = 'sandbox'
+                ac.access_token = None
+                ac.refresh_token = None
+                ac.realm_id = None
+                ac.environment = "sandbox"
+                self._tokens = {}
                 logger.info("✅ Revoked tokens and cleared in-memory state")
                 return True
             return False
@@ -195,18 +253,18 @@ class QBOService:
         Returns:
             dict[str, Any] | None: Dictionary with company/environment info, or error if not authenticated.
         """
-        if not (self.auth_client.access_token and self.auth_client.refresh_token and self.auth_client.realm_id):
+        ac = self.auth_client
+        if not (ac.access_token and ac.refresh_token and ac.realm_id):
             return {"error": "Not authenticated"}
-        company_info = {
-            "realm_id (company_id)": self.auth_client.realm_id,
+        return {
+            "realm_id (company_id)": ac.realm_id,
             "environment": self.config.environment,
-            "has_access_token": bool(self.auth_client.access_token),
-            "has_refresh_token": bool(self.auth_client.refresh_token)
+            "has_access_token": bool(ac.access_token),
+            "has_refresh_token": bool(ac.refresh_token),
         }
-        return company_info
 
 
-# Global authenticator instance
+# Global authenticator instance (constructed lazily; no I/O at import).
 qbo_service = QBOService(config=config)
 
 __all__ = ["qbo_service"]

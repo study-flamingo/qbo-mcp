@@ -10,7 +10,7 @@ from quickbooks import QuickBooks
 from .auth import qbo_service
 from .retry import call_with_retry
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 
 

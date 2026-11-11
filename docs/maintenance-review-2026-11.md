@@ -184,3 +184,25 @@ Also notable: FastMCP 4 brings a materially different transitive tree — `httpx
 6. Refactor the report generators to a table-driven registry; add per-report
    parsers (R4, R6).
 7. Logging defaults to INFO; move to module loggers (S3).
+
+## 6. Resolution status (2026-11-11)
+
+Follow-up work applied on `master` after the review (all with tests, suite green):
+
+| # | Finding | Status |
+|---|---|---|
+| S1 | Tokens committed | ✅ Untracked + gitignored; token writes now `0600`. **Owner action still needed: rotate + purge history (repo is PUBLIC).** |
+| S2 | OAuth `state` unvalidated | ✅ Generated and verified; callback wait bounded by a timeout. |
+| S3 | DEBUG logging by default | ✅ INFO by default (`QBO_DEBUG=1` opts into DEBUG); module loggers. |
+| R1 | Default-arg validation bug | ✅ Resolved dates are validated; regression tests added. |
+| R2 | Import-time OAuth/network | ✅ `AuthClient` and the interactive flow are lazy. |
+| R3 | Refresh on every call | ✅ Refreshes only when the access token is missing/expiring. |
+| R5 | No retry/backoff | ✅ `qbo_mcp.retry` with bounded exponential backoff + jitter; structured error mapping. |
+| deps | Outdated | ✅ Upgraded (fastmcp 4.1.8, mcp 2.3.0, pydantic 2.14, pytest 9, cryptography 50 …). |
+
+**Still open (deferred deliberately):**
+- R4/R6 — per-report response parsers and the table-driven tool registry. These
+  are behavior-touching and the parsers need a **live sandbox company** to
+  validate shapes, so they were left for a dedicated change.
+- A **live smoke test** of the dependency upgrade against a QBO company is still
+  recommended (unit tests mock the API).

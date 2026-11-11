@@ -8,8 +8,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from intuitlib.enums import Scopes
 
-logger = logging.getLogger()
-logger.setLevel(logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Load environment variables from .env file
 env_path = Path(__file__).parent.parent.parent.parent / ".env"

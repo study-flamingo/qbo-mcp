@@ -4,6 +4,7 @@ QuickBooks Online MCP Server - Entry Point
 
 import argparse
 import logging
+import os
 import sys
 
 from .server import mcp
@@ -14,12 +15,12 @@ from .config import config
 
 def main():
 
-    # Configure logging
-    logger = logging.getLogger()
+    # Configure logging (DEBUG only when QBO_DEBUG is set)
     logging.basicConfig(
-        level=logging.DEBUG,
+        level=logging.DEBUG if os.getenv("QBO_DEBUG") else logging.INFO,
         format="%(asctime)s:%(name)s:%(levelname)s: %(message)s",
     )
+    logger = logging.getLogger(__name__)
 
     # Setup argument parser
     parser = argparse.ArgumentParser(description="QuickBooks Online MCP Server")

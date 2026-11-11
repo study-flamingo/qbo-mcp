@@ -25,7 +25,7 @@ from .schemas import (
     EXPENSES_VENDOR_REQUEST_SCHEMA
 )
 
-logger = logging.getLogger()
+logger = logging.getLogger(__name__)
 
 # --- Helper functions migrated from models.py ---
 def get_current_datetime(include: str | list[str] | None = None,

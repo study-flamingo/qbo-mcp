@@ -8,6 +8,7 @@ from typing import Any
 from quickbooks import QuickBooks
 
 from .auth import qbo_service
+from .retry import call_with_retry
 
 logger = logging.getLogger()
 
@@ -66,7 +67,7 @@ class QBOReportsGenerator:
             }
             
             # Get P&L report from QuickBooks
-            report_data = client.get_report("ProfitAndLoss", params)
+            report_data = call_with_retry(client.get_report, "ProfitAndLoss", params)
             if not report_data:
                 raise ValueError("No report data returned")
             
@@ -96,7 +97,7 @@ class QBOReportsGenerator:
                 "end_date": as_of_date.strftime("%Y-%m-%d")
             }
             
-            report_data = client.get_report("BalanceSheet", params)
+            report_data = call_with_retry(client.get_report, "BalanceSheet", params)
             if not report_data:
                 raise ValueError("No report data returned")
             
@@ -120,7 +121,7 @@ class QBOReportsGenerator:
             client = self._get_client()
             
             params = period.to_qb_format()
-            report_data = client.get_report("CashFlow", params)
+            report_data = call_with_retry(client.get_report, "CashFlow", params)
             if not report_data:
                 raise ValueError("No report data returned")
             
@@ -150,7 +151,7 @@ class QBOReportsGenerator:
                 "end_date": as_of_date.strftime("%Y-%m-%d")
             }
             
-            report_data = client.get_report("AgedReceivables", params)
+            report_data = call_with_retry(client.get_report, "AgedReceivables", params)
             processed_report = self._process_aging_report(report_data, "receivables")
             
             logger.info(f"Generated A/R Aging as of {as_of_date}")
@@ -177,7 +178,7 @@ class QBOReportsGenerator:
                 "end_date": as_of_date.strftime("%Y-%m-%d")
             }
             
-            report_data = client.get_report("AgedPayables", params)
+            report_data = call_with_retry(client.get_report, "AgedPayables", params)
             processed_report = self._process_aging_report(report_data, "payables")
             
             logger.info(f"Generated A/P Aging as of {as_of_date}")
@@ -198,7 +199,7 @@ class QBOReportsGenerator:
             client = self._get_client()
             
             params = period.to_qb_format()
-            report_data = client.get_report("CustomerSales", params)
+            report_data = call_with_retry(client.get_report, "CustomerSales", params)
             if not report_data:
                 raise ValueError("No report data returned")
             
@@ -222,7 +223,7 @@ class QBOReportsGenerator:
             client = self._get_client()
             
             params = period.to_qb_format()
-            report_data = client.get_report("VendorExpenses", params)
+            report_data = call_with_retry(client.get_report, "VendorExpenses", params)
             if not report_data:
                 raise ValueError("No report data returned")
 
